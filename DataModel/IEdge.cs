@@ -1,0 +1,4 @@
+﻿namespace BSC_DS_MP.DataModel {
+    public interface IEdge {
+    }
+}
