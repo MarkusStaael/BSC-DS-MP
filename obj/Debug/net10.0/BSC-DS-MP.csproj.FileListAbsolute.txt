@@ -1,0 +1,15 @@
+C:\Users\marku\Documents\BSC-DS-MP\bin\Debug\net10.0\BSC-DS-MP.exe
+C:\Users\marku\Documents\BSC-DS-MP\bin\Debug\net10.0\BSC-DS-MP.deps.json
+C:\Users\marku\Documents\BSC-DS-MP\bin\Debug\net10.0\BSC-DS-MP.runtimeconfig.json
+C:\Users\marku\Documents\BSC-DS-MP\bin\Debug\net10.0\BSC-DS-MP.dll
+C:\Users\marku\Documents\BSC-DS-MP\bin\Debug\net10.0\BSC-DS-MP.pdb
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.AssemblyInfoInputs.cache
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.AssemblyInfo.cs
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.csproj.CoreCompileInputs.cache
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.sourcelink.json
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.dll
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\refint\BSC-DS-MP.dll
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.pdb
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\BSC-DS-MP.genruntimeconfig.cache
+C:\Users\marku\Documents\BSC-DS-MP\obj\Debug\net10.0\ref\BSC-DS-MP.dll

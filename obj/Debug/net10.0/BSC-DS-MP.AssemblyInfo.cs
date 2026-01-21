@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BSC-DS-MP")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4609ae11d5c669b20244592e5c182620c49ebbe2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+98a620e8c2de6d1fdc2d9ff95bd9f817b9da5234")]
 [assembly: System.Reflection.AssemblyProductAttribute("BSC-DS-MP")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BSC-DS-MP")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
