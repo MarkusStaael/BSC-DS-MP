@@ -1,23 +1,24 @@
 ﻿using BSC_DS_MP.DataModel;
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solutions;
-
-// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+using System.Globalization;
 
 IGraph graph = new Graph();
 
-string path = "C:\\Users\\marku\\Documents\\BSC-DS-MP\\test.gr";
+string path = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\test.gr";
 Reader.DominatingSetReader(path, graph);
 
 ISolution solution = new Greedy();
 
 Console.WriteLine("Solution for: "+graph);
-Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
+var ts = DateTime.Now;
+//Console.WriteLine(DateTime.Now.CompareTo);
 
 var uut = solution.Solve(graph);
 
-Console.WriteLine(DateTime.Now);
+var dt = (DateTime.Now - ts);
+
+Console.WriteLine("Delta time: "+dt.ToString());
 
 Console.WriteLine("Result: ");
 foreach(var node in uut) {

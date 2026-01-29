@@ -1,0 +1,71 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|c:\\users\\marku\\onedrive\\dokumenter\\bsc-ds-mp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|c:\\users\\marku\\onedrive\\dokumenter\\bsc-ds-mp\\reading\\reader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|solutionrelative:reading\\reader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|c:\\users\\marku\\onedrive\\dokumenter\\bsc-ds-mp\\datamodel\\igraph.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A388EBBE-C22E-AF33-2AF4-1131C24E7086}|BSC-DS-MP.csproj|solutionrelative:datamodel\\igraph.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "IGraph.cs",
+              "DocumentMoniker": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\DataModel\\IGraph.cs",
+              "RelativeDocumentMoniker": "DataModel\\IGraph.cs",
+              "ToolTip": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\DataModel\\IGraph.cs",
+              "RelativeToolTip": "DataModel\\IGraph.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAzwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T07:55:05.36Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Reader.cs",
+              "DocumentMoniker": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\Reading\\Reader.cs",
+              "RelativeDocumentMoniker": "Reading\\Reader.cs",
+              "ToolTip": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\Reading\\Reader.cs",
+              "RelativeToolTip": "Reading\\Reader.cs",
+              "ViewState": "AgIAACIAAAAAAAAAAAAQwAwAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T07:53:15.467Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAABAAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T07:49:39.547Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
