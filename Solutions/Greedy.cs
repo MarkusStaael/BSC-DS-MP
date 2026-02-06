@@ -1,4 +1,4 @@
-﻿using BSC_DS_MP.DataModel;
+﻿using BSC_DS_MP.DataModel.Graph;
 using System;
 using System.Collections.Generic;
 using System.Text;

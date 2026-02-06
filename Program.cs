@@ -1,27 +1,35 @@
 ﻿using BSC_DS_MP.DataModel;
+using BSC_DS_MP.DataModel.Graph;
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solutions;
 using System.Globalization;
 
-IGraph graph = new Graph();
 
 //string path = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\test.gr";
-string path2 = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\heuristic_001.gr\\heuristic_001.gr";
-Reader.DominatingSetReader(path2, graph);
+string path2 = "C:\\Users\\marku\\Documents\\BSC-DS-MP\\30z50.gr"; //"C:\\Users\\marku\\Documents\\BSC-DS-MP\\heuristic_001.gr\\heuristic_001.gr";
 
-ISolution solution = new Greedy();
 
-//Console.WriteLine("Solution for: "+graph);
-var ts = DateTime.Now;
-//Console.WriteLine(DateTime.Now.CompareTo);
+//IGraph arrgraph = new ArrayGraph(30);
+//IGraph graph2 = new Graph();
 
-var uut = solution.Solve(graph);
 
-var dt = (DateTime.Now - ts);
+IGraph arrgraph = Reader.DominatingSetReader(path2);
+//Reader.DominatingSetReader(path2, graph2);
 
-Console.WriteLine("Delta time: "+dt.ToString());
+ISolution solution = new GreedyHeap();
 
-Console.WriteLine("Result: ");
-foreach(var node in uut) {
-    Console.Write(node + ", ");
+RunTest(solution, arrgraph, "Array Graph");
+//RunTest(solution, graph2, "Dictionary");
+
+
+void RunTest(ISolution sol,IGraph gr,String id) {
+    var ts = DateTime.Now;
+    var result = sol.Solve(gr);
+    var dt = (DateTime.Now - ts);
+    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString());
+    Console.WriteLine("Result: ");
+    foreach (var node in result) {
+        Console.Write(node + ", ");
+    }
 }
+

@@ -1,4 +1,5 @@
 ﻿using BSC_DS_MP.DataModel.Graph;
+using DataModel;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,60 +9,42 @@ using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solutions;
 
-public class GreedyOp : ISolution {
-
-    private class Stuff {
-
-        public void add(int id) {
-            throw new NotImplementedException();
-        }
-
-        public int getMax() {
-            throw new NotImplementedException();
-        }
-
-        public void updateNode(int id) {
-            throw new NotImplementedException();
-        }
-
-        public void deleteNode(int id) {
-            throw new NotImplementedException();
-        }
-
-    }
+public class GreedyHeap : ISolution {
 
 
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
         HashSet<int> added = new();
-        graph = graph.Clone();
-
-        var maxFinder = new Stuff();
+        FibonacciMaxHeap<int,int> heap = new FibonacciMaxHeap<int, int>(int.MinValue);
+        Dictionary<int,FibonacciHeapNode<int,int>> key2Node = new();
 
         foreach (int node in graph.GetNodes()) {
-            maxFinder.add(graph.GetEdges(node).Count());
+            var fnode = new FibonacciHeapNode<int,int>(node, graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
+            key2Node.Add(node, fnode);
+            heap.Insert(fnode);
         }
 
         while (!solved) {
 
-            int nodeRef = maxFinder.getMax();
+            int nodeRef = heap.RemoveMin().Data;
             HashSet<int> updateSet = new HashSet<int>();
 
             added.Add(nodeRef);
             // remove from graph
             foreach(int node in graph.GetEdges(nodeRef)) {
-                foreach(int neighbor in graph.GetEdges(node)){
+                if (!graph.GetNodes().Contains(node)) continue;
+                foreach (int neighbor in graph.GetEdges(node)){
                     updateSet.Add(neighbor);
                 }
                 graph.RemoveNode(node);
-                maxFinder.deleteNode(node);
+                heap.Delete(key2Node[node]);
             }
             graph.RemoveNode(nodeRef);
-            maxFinder.deleteNode(nodeRef);
 
             // Update edge count of neighbors 
             foreach (int node in updateSet) {
-                maxFinder.updateNode(node);
+                if(graph.GetNodes().Contains(node))
+                    heap.DecreaseKey(key2Node[node], graph.GetEdges(node).Count());
             }
 
             if (graph.GetNodes().Count() == 0) {

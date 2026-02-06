@@ -2,33 +2,29 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BSC_DS_MP.DataModel;
+namespace BSC_DS_MP.DataModel.Graph;
 
 public class Graph : IGraph {
 
     public Graph() {
-        Nodes = new();
         Edges = new();
     }
-
-    public HashSet<int> Nodes;
 
     public Dictionary<int, ISet<int>> Edges; // Lowkey just merge
 
     public void AddEdge(int from, int to) {
         Edges[from].Add(to);
-        if(!Nodes.Contains(to)) AddNode(to); 
+        if(!Edges.Keys.Contains(to)) AddNode(to); 
         Edges[to].Add(from);
     }
 
     public void AddNode(int id) {
-        Nodes.Add(id);
         if(!Edges.ContainsKey(id)) Edges.Add(id, new HashSet<int>());
     }
 
     public IGraph Clone() {
         Graph graph = new Graph();
-        foreach(int node in Nodes) {
+        foreach(int node in Edges.Keys) {
             graph.AddNode(node);
         }
         foreach(KeyValuePair<int,ISet<int>> edge in Edges) {
@@ -40,7 +36,6 @@ public class Graph : IGraph {
     }
 
     public void RemoveNode(int id) {
-        Nodes.Remove(id);
         Edges.Remove(id);
     }
 
@@ -49,7 +44,7 @@ public class Graph : IGraph {
     }
 
     public IEnumerable<int> GetNodes() {
-        return Nodes; 
+        return Edges.Keys; 
     }
 
     public override string ToString() {
