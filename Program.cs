@@ -5,12 +5,13 @@ using System.Globalization;
 
 IGraph graph = new Graph();
 
-string path = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\test.gr";
-Reader.DominatingSetReader(path, graph);
+//string path = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\test.gr";
+string path2 = "C:\\Users\\marku\\OneDrive\\Dokumenter\\BSC-DS-MP\\heuristic_001.gr\\heuristic_001.gr";
+Reader.DominatingSetReader(path2, graph);
 
 ISolution solution = new Greedy();
 
-Console.WriteLine("Solution for: "+graph);
+//Console.WriteLine("Solution for: "+graph);
 var ts = DateTime.Now;
 //Console.WriteLine(DateTime.Now.CompareTo);
 

@@ -32,9 +32,14 @@ public class Greedy : ISolution {
             }
             graph.RemoveNode(nodeRef);
 
-            if(graph.GetNodes().Count() == 0) {
+            if (graph.GetNodes().Count()%1000 == 0) {
+                Console.WriteLine("Progress: " + graph.GetNodes().Count());
+            }
+
+            if (graph.GetNodes().Count() == 0) {
                 solved = true;
             }
+            //
 
         }
 
