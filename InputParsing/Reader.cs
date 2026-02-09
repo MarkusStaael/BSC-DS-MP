@@ -22,7 +22,7 @@ public static class Reader {
                 }
                 if (strings[0].Equals("p")) {
                     Console.WriteLine("Problem: " + line);
-                    graph = factory.Create(int.Parse(strings[2]));
+                    graph = factory.Create(int.Parse(strings[2])+1);
                     break;
                 }
                 throw new Exception("Invalid file format: missing problem line");

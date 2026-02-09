@@ -6,7 +6,7 @@ using System.Globalization;
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
-int target = 3;
+int target = 2;
 //
 
 
