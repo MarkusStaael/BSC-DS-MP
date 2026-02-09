@@ -49,6 +49,30 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
         _nNodes = 0;
     }
 
+    public void IncreaseKey(FibonacciHeapNode<T, TKey> x, TKey k) {
+        if (k.CompareTo(x.Key) < 0)
+            throw new ArgumentException("new key is smaller than current key");
+
+        x.Key = k;
+
+        // If x was the min node, update _minNode
+        if (_minNode == x) {
+            // traverse root list to find new min
+            var start = _minNode;
+            var curr = _minNode.Right;
+            FibonacciHeapNode<T, TKey> min = _minNode;
+
+            while (curr != start) {
+                if (curr.Key.CompareTo(min.Key) < 0)
+                    min = curr;
+                curr = curr.Right;
+            }
+
+            _minNode = min;
+        }
+    }
+
+
     /// <summary>
     /// Decreses the key of a node.
     /// O(1) amortized.

@@ -15,11 +15,11 @@ public class GreedyHeap : ISolution {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
         HashSet<int> added = new();
-        FibonacciMaxHeap<int,int> heap = new FibonacciMaxHeap<int, int>(int.MinValue);
+        FibonacciHeap<int,int> heap = new FibonacciHeap<int, int>(int.MinValue);
         Dictionary<int,FibonacciHeapNode<int,int>> key2Node = new();
 
         foreach (int node in graph.GetNodes()) {
-            var fnode = new FibonacciHeapNode<int,int>(node, graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
+            var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
             key2Node.Add(node, fnode);
             heap.Insert(fnode);
         }
@@ -44,7 +44,7 @@ public class GreedyHeap : ISolution {
             // Update edge count of neighbors 
             foreach (int node in updateSet) {
                 if(graph.GetNodes().Contains(node))
-                    heap.DecreaseKey(key2Node[node], graph.GetEdges(node).Count());
+                    heap.IncreaseKey(key2Node[node], -graph.GetEdges(node).Count());
             }
 
             if (graph.GetNodes().Count() == 0) {
