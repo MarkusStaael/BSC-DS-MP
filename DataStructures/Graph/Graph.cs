@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BSC_DS_MP.DataModel.Graph;
+namespace BSC_DS_MP.DataStructures.Graph;
 
 public class Graph : IGraph {
 

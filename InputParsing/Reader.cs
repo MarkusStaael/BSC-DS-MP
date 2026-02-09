@@ -1,4 +1,4 @@
-﻿using BSC_DS_MP.DataModel.Graph;
+﻿using BSC_DS_MP.DataStructures.Graph;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -6,7 +6,7 @@ using System.Text;
 namespace BSC_DS_MP.Reading; 
 public static class Reader {
 
-    public static IGraph DominatingSetReader(string path) {
+    public static IGraph DominatingSetReader(IGraphFactory factory, string path) {
 
         Console.WriteLine("Reading Dominating Set from file: " + path);
         IGraph graph;
@@ -22,7 +22,7 @@ public static class Reader {
                 }
                 if (strings[0].Equals("p")) {
                     Console.WriteLine("Problem: " + line);
-                    graph = new ArrayGraph(int.Parse(strings[2]));
+                    graph = factory.Create(int.Parse(strings[2]));
                     break;
                 }
                 throw new Exception("Invalid file format: missing problem line");

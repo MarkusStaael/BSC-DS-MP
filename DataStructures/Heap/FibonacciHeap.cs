@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace DataModel;
+namespace BSC_DS_MP.DataStructures.Heap;
 
 // CODE FROM:
 // https://github.com/sqeezy/FibonacciHeap/tree/main

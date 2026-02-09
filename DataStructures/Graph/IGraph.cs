@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BSC_DS_MP.DataModel.Graph; 
+namespace BSC_DS_MP.DataStructures.Graph;
+
 public interface IGraph {
 
     //public ISet<int> Nodes { get; }
@@ -14,4 +15,8 @@ public interface IGraph {
     public void RemoveNode(int id);
     public IEnumerable<int> GetNodes(); 
 
+}
+
+public interface IGraphFactory {
+    public IGraph Create(int size);
 }

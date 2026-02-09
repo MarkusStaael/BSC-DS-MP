@@ -1,5 +1,5 @@
-﻿using BSC_DS_MP.DataModel.Graph;
-using DataModel;
+﻿using BSC_DS_MP.DataStructures.Graph;
+using BSC_DS_MP.DataStructures.Heap;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,9 +9,7 @@ using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solutions;
 
-public class GreedyHeap : ISolution {
-
-
+public class GreedyHeap : ISolver {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
         HashSet<int> added = new();
