@@ -2,9 +2,11 @@
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solutions;
 using System.Globalization;
+using System.IO;
 
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
+bool toFile = true;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
 int target = 2;
 
@@ -29,6 +31,23 @@ void RunTest(ISolver solver,IGraph gr,string id) {
         foreach (var node in result) {
             Console.Write(node + ", ");
         }
+    }
+
+    Console.WriteLine("Writing to file...");
+    if (toFile) {
+        string outputDir = Path.Combine(projroot, "Solved output");
+        string filePath = Path.Combine(outputDir, "Sol.txt");
+        File.Create(filePath).Close();
+        using (StreamWriter writer = new StreamWriter(filePath)) {
+            writer.WriteLine("Test: " + id);
+            writer.WriteLine(result.Count);
+            foreach (var node in result) {
+                writer.WriteLine(node);
+            }
+        }
+        Console.WriteLine("Result written to: " + filePath);
+    }else {
+        Console.WriteLine("toFile is set to false, skipping file writing.");
     }
 }
 
