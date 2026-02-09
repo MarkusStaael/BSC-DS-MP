@@ -7,8 +7,6 @@ using System.Globalization;
 bool printResult = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
 int target = 2;
-// test - P 
-Console.WriteLine("Hello world!");
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
