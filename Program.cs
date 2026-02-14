@@ -1,4 +1,5 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
+using BSC_DS_MP.DataStructures.Primitives;
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solutions;
 using System.Globalization;
@@ -6,7 +7,7 @@ using System.IO;
 
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
-bool toFile = true;
+bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
 int target = 2;
 
@@ -15,17 +16,18 @@ string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
 IGraph graph = Reader.DominatingSetReader(new ArrayGraphFactory(),path);
+
 ISolver solver = new GreedyHeap();
 
 RunTest(solver, graph, "Test 1");
-
+//RunTest(new GreedyHeap(), Reader.DominatingSetReader(new Uint24GraphFactory(), path), "Test 2: Using UInt24");
 
 
 void RunTest(ISolver solver,IGraph gr,string id) {
     var ts = DateTime.Now;
     var result = solver.Solve(gr);
     var dt = (DateTime.Now - ts);
-    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString());
+    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + ". Resulting set size: " + result.Count);
     if (printResult) {
         Console.WriteLine("Result: ");
         foreach (var node in result) {
@@ -33,8 +35,9 @@ void RunTest(ISolver solver,IGraph gr,string id) {
         }
     }
 
-    Console.WriteLine("Writing to file...");
+    
     if (toFile) {
+        Console.WriteLine("Writing to file...");
         string outputDir = Path.Combine(projroot, "Solved output");
         string filePath = Path.Combine(outputDir, "Sol_" + id + ".txt");
         File.Create(filePath).Close();

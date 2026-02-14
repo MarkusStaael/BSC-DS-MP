@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BSC_DS_MP.DataStructures.Primitives;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -12,6 +13,7 @@ public interface IGraph {
     public void AddNode(int id);
     public void AddEdge(int from, int to);
     public IEnumerable<int> GetEdges(int node);
+    //public IEnumerable<UInt24> GetEdges(int node);
     public void RemoveNode(int id);
     public IEnumerable<int> GetNodes(); 
 

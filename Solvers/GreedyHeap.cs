@@ -29,7 +29,7 @@ public class GreedyHeap : ISolver {
 
             added.Add(nodeRef);
             // remove from graph
-            foreach(int node in graph.GetEdges(nodeRef)) {
+            foreach(int node in graph.GetEdges(nodeRef).ToList()) {
                 if (!graph.GetNodes().Contains(node)) continue;
                 foreach (int neighbor in graph.GetEdges(node)){
                     updateSet.Add(neighbor);
