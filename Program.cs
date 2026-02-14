@@ -39,7 +39,7 @@ void RunTest(ISolver solver,IGraph gr,string id) {
     
     if (toFile) {
         Console.WriteLine("Writing to file...");
-        string outputDir = Path.Combine(projroot, "Solved output");
+        string outputDir = Path.Combine(projroot, "SolvedOutput");
         string filePath = Path.Combine(outputDir, "Sol_" + id + ".txt");
         File.Create(filePath).Close();
         using (StreamWriter writer = new StreamWriter(filePath)) {
