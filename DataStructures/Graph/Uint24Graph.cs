@@ -64,6 +64,10 @@ public class Uint24Graph : IGraph {
         return Nodes;
     }
 
+    public int getSize() {
+        throw new NotImplementedException();
+    }
+
     //public override string ToString() {
     //    StringBuilder sb = new StringBuilder();
     //    foreach(KeyValuePair<int,ISet<int>> edge in Edges) {

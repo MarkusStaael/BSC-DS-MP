@@ -9,16 +9,16 @@ using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solutions;
 
-public class GreedyHeap : ISolver {
+public class GreedyHeap2 : ISolver {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
         HashSet<int> added = new();
         FibonacciHeap<int,int> heap = new FibonacciHeap<int, int>(int.MinValue);
-        Dictionary<int,FibonacciHeapNode<int,int>> key2Node = new();
+        FibonacciHeapNode<int, int>[] key2Node = new FibonacciHeapNode<int,int>[graph.getSize()];
 
         foreach (int node in graph.GetNodes()) {
             var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
-            key2Node.Add(node, fnode);
+            key2Node[node] = fnode;
             heap.Insert(fnode);
         }
 

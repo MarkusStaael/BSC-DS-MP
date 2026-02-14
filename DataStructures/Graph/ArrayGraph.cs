@@ -12,12 +12,17 @@ public class ArrayGraphFactory : IGraphFactory {
 }
 
 public class ArrayGraph : IGraph {
-
+    int Size;
     public ArrayGraph(int size) {
+        this.Size = size;
         Nodes = new();
         Edges = new HashSet<int>[size+1];
         for (int i = 0; i < size; i++)
             Edges[i] = new HashSet<int>();
+    }
+
+    public int getSize() {
+        return Size; 
     }
 
     HashSet<int> Nodes = new();
