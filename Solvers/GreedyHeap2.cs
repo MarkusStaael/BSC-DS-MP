@@ -12,8 +12,8 @@ namespace BSC_DS_MP.Solutions;
 public class GreedyHeap2 : ISolver {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
-        HashSet<int> added = new();
-        FibonacciHeap<int,int> heap = new FibonacciHeap<int, int>(int.MinValue);
+        HashSet<int> ds = new();
+        FibonacciHeap<int,int> heap = new(int.MinValue);
         FibonacciHeapNode<int, int>[] key2Node = new FibonacciHeapNode<int,int>[graph.getSize()];
 
         foreach (int node in graph.GetNodes()) {
@@ -27,8 +27,7 @@ public class GreedyHeap2 : ISolver {
             int nodeRef = heap.RemoveMin().Data;
             HashSet<int> updateSet = new HashSet<int>();
 
-            added.Add(nodeRef);
-            added.Add(nodeRef);
+            ds.Add(nodeRef);
             // remove from graph
             foreach(int node in graph.GetEdges(nodeRef)) {
                 if (!graph.GetNodes().Contains(node)) continue;
@@ -55,6 +54,6 @@ public class GreedyHeap2 : ISolver {
 
 
 
-        return added;
+        return ds;
     }
 }
