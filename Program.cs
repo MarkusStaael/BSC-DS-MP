@@ -15,12 +15,12 @@ string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
-IGraph graph = Reader.DominatingSetReader(new ArrayGraphFactory(),path);
+//IGraph graph = Reader.DominatingSetReader(new ArrayGraphFactory(),path);
 
-ISolver solver = new GreedyHeap();
+//ISolver solver = new GreedyHeap();
 
-RunTest(solver, graph, "Test 1");
-RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new ArrayGraphFactory(), path), "Test 2 - Removal of dictionary ");
+RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new ArrayGraphFactory(), path), "Test 1");
+RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new ArrayGraphFactory(), path), "Test 2 - List instead of hashset ");
 //RunTest(new GreedyHeap(), Reader.DominatingSetReader(new Uint24GraphFactory(), path), "Test 2: Using UInt24");
 
 

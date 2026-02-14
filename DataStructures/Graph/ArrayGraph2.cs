@@ -5,20 +5,20 @@ using System.Text;
 
 namespace BSC_DS_MP.DataStructures.Graph;
 
-public class ArrayGraph2Factory : IGraphFactory {
+public class ArrayGraphFactory : IGraphFactory {
     public IGraph Create(int size) {
-        return new ArrayGraph2(size);
+        return new ArrayGraph(size);
     }
 }
 
-public class ArrayGraph2 : IGraph {
+public class ArrayGraph : IGraph {
     int Size;
-    public ArrayGraph2(int size) {
+    public ArrayGraph(int size) {
         this.Size = size;
         Nodes = new();
-        Edges = new List<int>[size+1];
+        Edges = new HashSet<int>[size+1];
         for (int i = 0; i < size; i++)
-            Edges[i] = new List<int>();
+            Edges[i] = new HashSet<int>();
     }
 
     public int getSize() {
@@ -26,7 +26,7 @@ public class ArrayGraph2 : IGraph {
     }
 
     HashSet<int> Nodes = new();
-    public List<int>[] Edges; // Lowkey just merge
+    public HashSet<int>[] Edges; // Lowkey just merge
 
     public void AddEdge(int from, int to) {
         Edges[from].Add(to);
