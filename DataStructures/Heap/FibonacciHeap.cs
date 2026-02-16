@@ -53,22 +53,46 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
         if (k.CompareTo(x.Key) < 0)
             throw new ArgumentException("new key is smaller than current key");
 
+        // If key unchanged, nothing to do
+        if (k.CompareTo(x.Key) == 0)
+            return;
+
         x.Key = k;
 
-        // If x was the min node, update _minNode
-        if (_minNode == x) {
-            // traverse root list to find new min
-            var start = _minNode;
-            var curr = _minNode.Right;
-            FibonacciHeapNode<T, TKey> min = _minNode;
-
-            while (curr != start) {
-                if (curr.Key.CompareTo(min.Key) < 0)
-                    min = curr;
-                curr = curr.Right;
+        // If x has children, increasing x.Key may violate heap order
+        // (parent.Key <= child.Key). Cut any child whose key is smaller
+        // than the new x.Key and move it to the root list.
+        FibonacciHeapNode<T, TKey> child = x.Child;
+        if (child != null) {
+            int numChildren = x.Degree;
+            FibonacciHeapNode<T, TKey> curr = child;
+            for (int i = 0; i < numChildren; i++) {
+                FibonacciHeapNode<T, TKey> next = curr.Right;
+                if (curr.Key.CompareTo(x.Key) < 0) {
+                    Cut(curr, x);
+                    if (_minNode == null || curr.Key.CompareTo(_minNode.Key) < 0) {
+                        _minNode = curr;
+                    }
+                }
+                curr = next;
             }
+        }
 
-            _minNode = min;
+        // If x was the min node, it may no longer be the minimum — recompute.
+        if (_minNode == x) {
+            if (_minNode != null) {
+                var start = _minNode;
+                var curr = _minNode.Right;
+                FibonacciHeapNode<T, TKey> min = _minNode;
+
+                while (curr != start) {
+                    if (curr.Key.CompareTo(min.Key) < 0)
+                        min = curr;
+                    curr = curr.Right;
+                }
+
+                _minNode = min;
+            }
         }
     }
 
