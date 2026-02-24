@@ -19,8 +19,8 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
 //ISolver solver = new GreedyHeap();
 
-RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new ArrayGraphFactory(), path), "Test 1");
-RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new ArrayGraphFactory(), path), "Test 2 - List instead of hashset ");
+RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 1");
+RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2");
 //RunTest(new GreedyHeap(), Reader.DominatingSetReader(new Uint24GraphFactory(), path), "Test 2: Using UInt24");
 
 

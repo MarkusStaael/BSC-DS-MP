@@ -1,31 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Text;
 
 
 namespace BSC_DS_MP.DataStructures.Graph;
 
-public class ArrayGraph2Factory : IGraphFactory {
+public class AdjLstGraphFactory : IGraphFactory {
     public IGraph Create(int size) {
-        return new ArrayGraph2(size);
+        return new AdjLstGraph(size);
     }
 }
 
-public class ArrayGraph2 : IGraph {
+public class AdjLstGraph : IGraph {
     int Size;
-    public ArrayGraph2(int size) {
+    public AdjLstGraph(int size) {
         this.Size = size;
-        Nodes = new();
         Edges = new List<int>[size+1];
         for (int i = 0; i < size; i++)
-            Edges[i] = new List<int>();
+            Edges[i] = new();
     }
 
     public int getSize() {
         return Size; 
     }
 
-    HashSet<int> Nodes = new();
     public List<int>[] Edges; // Lowkey just merge
 
     public void AddEdge(int from, int to) {
@@ -34,28 +33,22 @@ public class ArrayGraph2 : IGraph {
     }
 
     public void AddNode(int id) {
-        Nodes.Add(id);
     }
 
-    public IGraph Clone() {
-        IGraph graph = new ArrayGraph(Edges.Length);
-        foreach(int node in Nodes) {
-            graph.AddNode(node);
-
-            foreach (int to in Edges[node]) {
-                graph.AddEdge(node, to);
+    public IGraph CloneInto(IGraphFactory fac) {
+        IGraph ret = fac.Create(Size);
+        foreach(int key in GetNodes()) {
+            foreach(int to in GetEdges(key)) {
+                ret.AddEdge(key, to);
             }
         }
-        
-        return graph;
+
+        return ret;
     }
 
     public void RemoveNode(int id) {
-        Nodes.Remove(id);
-        foreach (int to in Edges[id]) {
-            Edges[to].Remove(id);
-        }
-        Edges[id].Clear();
+        // TODO: IMPLEMENT
+        return;
     }
 
     public IEnumerable<int> GetEdges(int node) {
@@ -63,9 +56,8 @@ public class ArrayGraph2 : IGraph {
     }
 
     public IEnumerable<int> GetNodes() {
-        return Nodes; 
+        return Enumerable.Range(0, Size); 
     }
-
     //public override string ToString() {
     //    StringBuilder sb = new StringBuilder();
     //    foreach(KeyValuePair<int,ISet<int>> edge in Edges) {

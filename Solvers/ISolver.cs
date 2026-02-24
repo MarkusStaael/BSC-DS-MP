@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace BSC_DS_MP.Solutions; 
+namespace BSC_DS_MP.Solvers; 
 internal interface ISolver {
     public ISet<int> Solve(IGraph graph);
 }

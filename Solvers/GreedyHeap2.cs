@@ -7,14 +7,15 @@ using System.Numerics;
 using System.Text;
 using System.Xml.Linq;
 
-namespace BSC_DS_MP.Solutions;
+namespace BSC_DS_MP.Solvers;
 
 public class GreedyHeap2 : ISolver {
     public ISet<int> Solve(IGraph graph) {
-        bool solved = false;
+        
         HashSet<int> ds = new();
-        FibonacciHeap<int,int> heap = new(int.MinValue);
-        FibonacciHeapNode<int, int>[] key2Node = new FibonacciHeapNode<int,int>[graph.getSize()];
+        BitArray inSolution = new(graph.getSize());
+        var heap = new FibonacciHeap<int, int>(int.MinValue);
+        var key2Node = new FibonacciHeapNode<int,int>[graph.getSize()];
 
         foreach (int node in graph.GetNodes()) {
             var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
@@ -22,31 +23,38 @@ public class GreedyHeap2 : ISolver {
             heap.Insert(fnode);
         }
 
-        while (!solved) {
+        while (true) {
 
-            int nodeRef = heap.RemoveMin().Data;
-            HashSet<int> updateSet = new HashSet<int>();
+            int selectedNode = heap.RemoveMin().Data;   // Select the best 'greedy' option
+            ds.Add(selectedNode);                       // Add to dominating set
+            inSolution.Set(selectedNode, true);         // Mark that this set is in/dominated in our solution
 
-            ds.Add(nodeRef);
-            // remove from graph
-            foreach(int node in graph.GetEdges(nodeRef)) {
-                if (!graph.GetNodes().Contains(node)) continue;
-                foreach (int neighbor in graph.GetEdges(node)){
-                    updateSet.Add(neighbor);
+
+            HashSet<int> toDelete = new();
+            List<int> toBeReduced = new();
+            // remove next-doors, update their neighbors
+            foreach(int nextdoor in graph.GetEdges(selectedNode)) {
+                if (!inSolution[nextdoor]) {
+                    foreach (int secondDoor in graph.GetEdges(nextdoor)) {
+                        toBeReduced.Add(secondDoor);
+                    }
                 }
-                graph.RemoveNode(node);
-                heap.Delete(key2Node[node]);
+                inSolution.Set(nextdoor,true); // Write down that we have used this node - basically deleted
+                heap.Delete(key2Node[nextdoor]);
+                //heap.IncreaseKey(key2Node[nextdoor], BigInteger.Min);
+                //toDelete.Add(nextdoor); // Mark for deletion
             }
-            graph.RemoveNode(nodeRef);
+            //graph.RemoveNode(nodeRef);
 
             // Update edge count of neighbors 
-            foreach (int node in updateSet) {
-                if(graph.GetNodes().Contains(node))
+
+            foreach (int node in toBeReduced) {
+                if (!inSolution[node])
                     heap.IncreaseKey(key2Node[node], -graph.GetEdges(node).Count());
             }
 
             if (graph.GetNodes().Count() == 0) {
-                solved = true;
+                break;
             }
             //
 

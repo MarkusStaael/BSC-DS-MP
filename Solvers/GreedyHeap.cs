@@ -7,18 +7,18 @@ using System.Numerics;
 using System.Text;
 using System.Xml.Linq;
 
-namespace BSC_DS_MP.Solutions;
+namespace BSC_DS_MP.Solvers;
 
 public class GreedyHeap : ISolver {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
-        HashSet<int> added = new();
-        FibonacciHeap<int,int> heap = new FibonacciHeap<int, int>(int.MinValue);
-        Dictionary<int,FibonacciHeapNode<int,int>> key2Node = new();
+        HashSet<int> ds = new();
+        FibonacciHeap<int, int> heap = new(int.MinValue);
+        FibonacciHeapNode<int, int>[] key2Node = new FibonacciHeapNode<int, int>[graph.getSize()];
 
         foreach (int node in graph.GetNodes()) {
-            var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
-            key2Node.Add(node, fnode);
+            var fnode = new FibonacciHeapNode<int, int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
+            key2Node[node] = fnode;
             heap.Insert(fnode);
         }
 
@@ -27,22 +27,21 @@ public class GreedyHeap : ISolver {
             int nodeRef = heap.RemoveMin().Data;
             HashSet<int> updateSet = new HashSet<int>();
 
-            added.Add(nodeRef);
-            added.Add(nodeRef);
+            ds.Add(nodeRef);
             // remove from graph
-            foreach(int node in graph.GetEdges(nodeRef)) {
+            foreach (int node in graph.GetEdges(nodeRef)) {
                 if (!graph.GetNodes().Contains(node)) continue;
-                foreach (int neighbor in graph.GetEdges(node)){
+                foreach (int neighbor in graph.GetEdges(node)) {
                     updateSet.Add(neighbor);
                 }
                 graph.RemoveNode(node);
-                heap.Delete(key2Node[node]);
+                //heap.Delete(key2Node[node]);
             }
             graph.RemoveNode(nodeRef);
 
             // Update edge count of neighbors 
             foreach (int node in updateSet) {
-                if(graph.GetNodes().Contains(node))
+                if (graph.GetNodes().Contains(node))
                     heap.IncreaseKey(key2Node[node], -graph.GetEdges(node).Count());
             }
 
@@ -55,6 +54,6 @@ public class GreedyHeap : ISolver {
 
 
 
-        return added;
+        return ds;
     }
 }
