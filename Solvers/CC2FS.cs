@@ -1,5 +1,4 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
-using BSC_DS_MP.Solutions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,30 +28,74 @@ internal class CC2FS : ISolver {
         ConfChange = new(graph.getSize());
         ConfChange.SetAll(true); // CC2R1
 
-        freq = new ushort[graph.getSize()];// short or int
-        for(int i = 0; i < graph.getSize(); i++) {
+        freq = new ushort[graph.getSize()+1];// short or int
+        covered = new ushort[graph.getSize()+1];
+        for (int i = 0; i < graph.getSize(); i++) {
             freq[i] = 1;
+            covered[i] = 0;
         }
 
-        var bestSolution = new GreedyHeap().Solve(graph);
+        var bestSolution = new GreedyHeap2().Solve(graph);
+        foreach(int i in bestSolution) {
+            foreach (int neighbor in graph.GetEdges(i)) {
+                covered[i] += 1;
+            }
+        }
+
         CandidateSol = new HashSet<int>(bestSolution);
 
         while(0<cutofftime--) {
-
+            if(NoUncoveredVetices()) {
+                if()
+                continue;
+            }
         }
 
         return bestSolution;
 
     }
+    public bool NoUncoveredVetices() {
+        throw new NotImplementedException();
+    }
 
     public ushort GetFrequency(int v) {
 
-        if(CandidateSol.Contains(v)) {
+        /**
+         Definition 3For a graphG=  (V, E), and a candidate solutionS, the frequency based scoringfunction denoted byscoref, is a function such that
+        
+        Remark that, in the above definition,C1is indeed the set of uncovered vertices that would be-come covered by addinguintoSandC2is the set of covered vertices that would become uncoveredby removingufromS.
+         
+         */
 
+        if (CandidateSol.Contains(v)) {
+            ushort sum = 0;
+            foreach(int neigh in graph.GetEdges(v)) {
+                if (covered[neigh]==0) {
+                    sum += freq[neigh];
+                }
+            }
+            return sum;
+        } else {
+            ushort sum = 0;
+            foreach (int neigh in graph.GetEdges(v)) {
+                if (covered[neigh] == 1) {
+                    sum -= freq[neigh];
+                }
+            }
+            return sum;
         }
 
-        return 1;
+            return 1;
     }
+
+    private void DecisionRemoveVertex(int v) {
+        /*
+         * Remove rule 1
+         */
+
+    }
+
+
 
     private void RemoveVertex(int v) {
         /**
@@ -63,6 +106,12 @@ internal class CC2FS : ISolver {
         foreach(int u in SecondNeighborhood(v)) {
             ConfChange.Set(u, true);
         }
+
+        // UPDATE IN SOL
+        CandidateSol.Remove(v);
+        foreach (int neighbor in graph.GetEdges(v)) {
+            covered[neighbor] -= 1;
+        }
     }
 
     private void AddVertex(int v) {
@@ -71,6 +120,11 @@ internal class CC2FS : ISolver {
          */
         foreach (int u in SecondNeighborhood(v)) {
             ConfChange.Set(u, true);
+        }
+        // UPDATE IN SOL
+        CandidateSol.Add(v);
+        foreach(int neighbor in graph.GetEdges(v)) {
+            covered[neighbor] += 1;
         }
     }
 
