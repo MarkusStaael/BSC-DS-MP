@@ -25,7 +25,9 @@ VerifierTest();
 
 // TESTS
 
-RunTest(new GreedyHeap2(),  Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path), "Test 1: Greedy", new AdjSetLstGraphFactory());
+IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
+
+RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazy", new AdjSetLstGraphFactory());
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
 // REMEMBER TO +1 WHEN PRINTING RESULTS

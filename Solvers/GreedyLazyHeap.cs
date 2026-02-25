@@ -17,7 +17,7 @@ public class GreedyLazyHeap : ISolver {
 
 
 
-        ISolution sol = new BitArraySolution(size);
+        ISolution sol = new ListSolution(size);
 
         BitArray markChanged = new BitArray(size, false);
         BitArray coveredmark = new BitArray(size, false);
