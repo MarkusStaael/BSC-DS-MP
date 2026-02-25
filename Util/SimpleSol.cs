@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace BSC_DS_MP.Util; 
-internal class SimpleSol : ISolution {
+internal class SimpleSol {
     public HashSet<int> vertices; // 1m ->
     public ushort[] coveredCount; // 1m -> 1.91 MB
     public bool solutionIsValid;
@@ -69,4 +69,3 @@ internal class SimpleSol : ISolution {
         return coveredCount[v] > 0;
     }
 }
-

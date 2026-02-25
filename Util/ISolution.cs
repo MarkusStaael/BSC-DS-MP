@@ -3,16 +3,20 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace BSC_DS_MP.Util; 
-internal interface ISolution {
+public interface ISolution {
 
     public void AddVertex(int v);
-    public void RemoveVertex(int v);
+    public int Count();
+    public IEnumerable<int> GetEnumerator();
 
-    public bool IsSolutionValid();
-    public bool IsCovered(int v);
-    public bool SolutionContains(int v);
-
-    public int Covered(int v);
-    public int GetCoveredSum();
-    public IEnumerable<int> GetSolution();
+    //public void AddVertex(int v);
+    //public void RemoveVertex(int v);
+    //
+    //public bool IsSolutionValid();
+    //public bool IsCovered(int v);
+    //public bool SolutionContains(int v);
+    //
+    //public int Covered(int v);
+    //public int GetCoveredSum();
+    //public IEnumerable<int> GetSolution();
 }
