@@ -11,7 +11,7 @@ using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solvers;
 
-public class GreedyHeap2 : ISolver {
+public class GreedyLazyHeap : ISolver {
     public ISolution Solve(IGraph graph) {
         int size = graph.getSize();
 
