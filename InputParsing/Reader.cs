@@ -22,7 +22,7 @@ public static class Reader {
                 }
                 if (strings[0].Equals("p")) {
                     Console.WriteLine("Problem: " + line);
-                    graph = factory.Create(int.Parse(strings[2]));
+                    graph = factory.Create(int.Parse(strings[2])+1);
                     break;
                 }
                 throw new Exception("Invalid file format: missing problem line");
@@ -35,11 +35,12 @@ public static class Reader {
                     Console.WriteLine("Comment: " + line);
                     continue;
                 }
-                int v = int.Parse(strings[0])-1, e = int.Parse(strings[1])-1;
+                int v = int.Parse(strings[0]), e = int.Parse(strings[1]);
 
                 graph.AddNode(v);
                 graph.AddEdge(v,e);
             }
+            graph.RemoveNode(0); // Remove dummy node
         }
 
         return graph;

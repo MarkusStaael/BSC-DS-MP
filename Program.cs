@@ -19,7 +19,8 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
 //ISolver solver = new GreedyHeap();
 
-RunTest(new GreedyHeap2(),  Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path), "Test 1: Greedy");
+RunTest(new NewGreedyHeap(),  Reader.DominatingSetReader(new NewGraphFactory(), path), "Test 1: New Greedy");
+
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
 // REMEMBER TO +1 WHEN PRINTING RESULTS
