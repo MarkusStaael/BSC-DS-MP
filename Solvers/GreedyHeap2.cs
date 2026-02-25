@@ -19,56 +19,63 @@ public class GreedyHeap2 : ISolver {
 
         BitArray markChanged = new BitArray(size, false);
         BitArray coveredmark = new BitArray(size, false);
-        ushort[] coveredNeighbors = new ushort[size];
-        int coveredSum = 0; 
+        ushort[] uncoveredNeighbors = new ushort[size]; // uncovered neighbors
+        int coveredSum = 0;
 
 
-        var heap = new FibonacciHeap<int, int>(int.MaxValue);
-        var key2Node = new FibonacciHeapNode<int,int>[size];
+        var heap = new FibonacciHeap<int, int>(int.MinValue);
+        var key2Node = new FibonacciHeapNode<int, int>[size];
 
         foreach (int node in graph.GetNodes()) {
-            var fnode = new FibonacciHeapNode<int,int>(node, graph.GetEdges(node).Count()); // POSITIVE FOR MAX HEAP
+            var fnode = new FibonacciHeapNode<int, int>(node, graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
             key2Node[node] = fnode;
             heap.Insert(fnode);
-            coveredNeighbors[node] = 0;
-        }
+            uncoveredNeighbors[node] = (ushort)graph.GetEdges(node).Count();
+        }// test
 
         while (true) {
-            int selectedNode; 
-            while(true) {
+            int selectedNode;
+            while (true) {
                 selectedNode = heap.RemoveMax().Data;
-                Console.WriteLine("Selected node: " + (selectedNode+1));
-                if (markChanged[selectedNode]) {
-                    int unCoveredNeighbors = graph.GetEdges(selectedNode).Count()-coveredNeighbors[selectedNode];
 
-                    Console.WriteLine("unCoveredNeighbors: " + unCoveredNeighbors);
-                    if (unCoveredNeighbors != 0) { 
+                int unCoveredNeighbors = (uncoveredNeighbors[selectedNode]);
+                //Console.WriteLine("Selected node: " + (selectedNode + 1) + "(" + unCoveredNeighbors + ")");
+
+                if (markChanged[selectedNode]) {
+                    if (unCoveredNeighbors != 0) {
                         heap.Insert(new(selectedNode, unCoveredNeighbors));
                         markChanged[selectedNode] = false;
                     } else {
-                        graph.RemoveNode(selectedNode);
                     }
 
-                        continue;
+                    continue;
                 }
                 break;
             }
 
             sol[selectedNode] = true;
-
-            foreach(int neighbor in graph.GetEdges(selectedNode)) {
-                markChanged[neighbor] = true;
-                if (!coveredmark[neighbor]) { // COUNT UP
+            foreach (int neighbor in graph.GetEdges(selectedNode)) { // Foreach neighbor
+                //Console.WriteLine("-"+neighbor + " is a neighbor of " + selectedNode);
+                foreach (int neighbor2 in graph.GetEdges(neighbor)) { // Foreach neighbor of the neighbor
+                    //Console.WriteLine("--"+neighbor2 + " is a neighbor of " + neighbor);
+                    if (!coveredmark[neighbor]) uncoveredNeighbors[neighbor2] -= 1; // Reduce their uncovered neighbors count
+                    markChanged[neighbor2] = true; // Mark it as changes so lazy can update it when its selected
+                }
+                if (!coveredmark[selectedNode]) {
+                    uncoveredNeighbors[neighbor] -= 1;
+                }
+                markChanged[neighbor] = true; // -||-
+                if (!coveredmark[neighbor]) {
                     coveredmark[neighbor] = true;
                     coveredSum++;
                 }
-                foreach(int neighbor2 in graph.GetEdges(neighbor)) {
-                    coveredNeighbors[neighbor2] += 1;
-                    markChanged[neighbor2] = true;
-                }
+            }
+            if (!coveredmark[selectedNode]) {
+                coveredmark[selectedNode] = true;
+                coveredSum++;
             }
             graph.RemoveNode(selectedNode);
-            Console.WriteLine((selectedNode+1) + "-> " + coveredSum + "/" + size );
+            //Console.WriteLine((selectedNode+1) + "-> " + coveredSum + "/" + size );
             if (coveredSum == size) {
                 break;
             }
