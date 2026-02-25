@@ -2,6 +2,7 @@
 using BSC_DS_MP.DataStructures.Primitives;
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solvers;
+using BSC_DS_MP.Util;
 using BSC_DS_MP.Verifier;
 using System.Collections;
 using System.Globalization;
@@ -35,20 +36,17 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
     IGraph clone = gr.CloneInto(fac);
 
     var ts = DateTime.Now;
-    var result = solver.Solve(clone);
+    ISolution result = solver.Solve(clone);
     var dt = (DateTime.Now - ts);
 
     bool passed = Verifier.Verify(result, gr);
     int lazycount = 0;
-    for (int i = 0; i < result.Length; i++) {
-        if (result[i]) lazycount++;
-    }
 
-    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + "s . Resulting set size: " + lazycount + " RESULT ACCEPTED?: "+passed);
+    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: "+passed);
     if (printResult) {
         Console.WriteLine("Result: ");
-        for (int i = 0; i < result.Length; i++) {
-            if (result[i]) Console.Write((i + 1) + ", ");
+        foreach(int i in result.GetEnumerator()) {
+            Console.Write((i + 1) + ", ");
         }
     }
     
@@ -60,8 +58,8 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
         using (StreamWriter writer = new StreamWriter(filePath)) {
             writer.WriteLine("Test: " + id);
             writer.WriteLine(lazycount);
-            for (int i = 0; i < result.Length; i++) {
-                if (result[i]) writer.WriteLine((i + 1) + ", ");
+            foreach (int i in result.GetEnumerator()) {
+                writer.WriteLine((i + 1) + ", ");
             }
         }
         Console.WriteLine("Result written to: " + filePath);
@@ -74,12 +72,12 @@ void VerifierTest() {
     IGraph gr = new AdjSetLstGraph(3);
     gr.AddEdge(0, 1);
     gr.AddEdge(1, 2);
-    BitArray arr = new BitArray(3, false);
-    arr[0] = true;
+    ISolution sol = new BitArraySolution(3);
+    sol.AddVertex(0);
 
-    if (Verifier.Verify(arr, gr) == true) throw new Exception("Verifier test 1 failed: expected false, got true");
-    arr[1] = true;
-    if (Verifier.Verify(arr, gr) == false) throw new Exception("Verifier test 2 failed: expected true, got false");
+    if (Verifier.Verify(sol, gr) == true) throw new Exception("Verifier test 1 failed: expected false, got true");
+    sol.AddVertex(1);
+    if (Verifier.Verify(sol, gr) == false) throw new Exception("Verifier test 2 failed: expected true, got false");
     Console.WriteLine("Verifier tests passed");
 }
 

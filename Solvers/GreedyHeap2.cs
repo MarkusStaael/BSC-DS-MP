@@ -12,10 +12,12 @@ using System.Xml.Linq;
 namespace BSC_DS_MP.Solvers;
 
 public class GreedyHeap2 : ISolver {
-    public BitArray Solve(IGraph graph) {
+    public ISolution Solve(IGraph graph) {
         int size = graph.getSize();
 
-        BitArray sol = new BitArray(size, false);
+
+
+        ISolution sol = new BitArraySolution(size);
 
         BitArray markChanged = new BitArray(size, false);
         BitArray coveredmark = new BitArray(size, false);
@@ -53,7 +55,7 @@ public class GreedyHeap2 : ISolver {
                 break;
             }
 
-            sol[selectedNode] = true;
+            sol.AddVertex(selectedNode);
             foreach (int neighbor in graph.GetEdges(selectedNode)) { // Foreach neighbor
                 //Console.WriteLine("-"+neighbor + " is a neighbor of " + selectedNode);
                 foreach (int neighbor2 in graph.GetEdges(neighbor)) { // Foreach neighbor of the neighbor
