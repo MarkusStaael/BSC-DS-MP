@@ -8,7 +8,7 @@ public class HashSetSolution : ISolution {
 
     HashSet<int> vertices;
     public HashSetSolution(int size) {
-        vertices = new HashSet<int>(size/3);
+        vertices = new HashSet<int>(size/3); // TODO: OPTIMAL SET SIZE ????
     }
 
     public void AddVertex(int v) {
