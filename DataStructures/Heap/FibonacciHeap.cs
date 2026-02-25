@@ -13,12 +13,12 @@ namespace BSC_DS_MP.DataStructures.Heap;
 /// <typeparam name="T">Type of the stored objects.</typeparam>
 /// <typeparam name="TKey">Type of the object key. Should implement IComparable.</typeparam>
 public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
-    private readonly TKey _minKeyValue;
+    private readonly TKey _maxKeyValue;
 
     /// <summary>
-    /// Minimum (statring) node of the heap.
+    /// Maximum (starting) node of the heap.
     /// </summary>
-    private FibonacciHeapNode<T, TKey> _minNode;
+    private FibonacciHeapNode<T, TKey> _maxNode;
 
     /// <summary>
     /// The nodes quantity.
@@ -28,9 +28,9 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
     /// <summary>
     /// Initializes the new instance of the Heap.
     /// </summary>
-    /// <param name="minKeyValue">Minimum value of the key - to be used for comparing.</param>
-    public FibonacciHeap(TKey minKeyValue) {
-        _minKeyValue = minKeyValue;
+    /// <param name="maxKeyValue">Maximum value of the key - to be used for comparing.</param>
+    public FibonacciHeap(TKey maxKeyValue) {
+        _maxKeyValue = maxKeyValue;
     }
 
     /// <summary>
@@ -38,14 +38,14 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
     /// </summary>
     /// <returns>true if heap is empty - contains no elements.</returns>
     public bool IsEmpty() {
-        return _minNode == null;
+        return _maxNode == null;
     }
 
     /// <summary>
     /// Removes all the elements from the heap.
     /// </summary>
     public void Clear() {
-        _minNode = null;
+        _maxNode = null;
         _nNodes = 0;
     }
 
@@ -60,7 +60,7 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
         x.Key = k;
 
         // If x has children, increasing x.Key may violate heap order
-        // (parent.Key <= child.Key). Cut any child whose key is smaller
+        // (parent.Key >= child.Key). Cut any child whose key is larger
         // than the new x.Key and move it to the root list.
         FibonacciHeapNode<T, TKey> child = x.Child;
         if (child != null) {
@@ -68,30 +68,30 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
             FibonacciHeapNode<T, TKey> curr = child;
             for (int i = 0; i < numChildren; i++) {
                 FibonacciHeapNode<T, TKey> next = curr.Right;
-                if (curr.Key.CompareTo(x.Key) < 0) {
+                if (curr.Key.CompareTo(x.Key) > 0) {
                     Cut(curr, x);
-                    if (_minNode == null || curr.Key.CompareTo(_minNode.Key) < 0) {
-                        _minNode = curr;
+                    if (_maxNode == null || curr.Key.CompareTo(_maxNode.Key) > 0) {
+                        _maxNode = curr;
                     }
                 }
                 curr = next;
             }
         }
 
-        // If x was the min node, it may no longer be the minimum — recompute.
-        if (_minNode == x) {
-            if (_minNode != null) {
-                var start = _minNode;
-                var curr = _minNode.Right;
-                FibonacciHeapNode<T, TKey> min = _minNode;
+        // If x was the max node, it may no longer be the maximum — recompute.
+        if (_maxNode == x) {
+            if (_maxNode != null) {
+                var start = _maxNode;
+                var curr = _maxNode.Right;
+                FibonacciHeapNode<T, TKey> max = _maxNode;
 
                 while (curr != start) {
-                    if (curr.Key.CompareTo(min.Key) < 0)
-                        min = curr;
+                    if (curr.Key.CompareTo(max.Key) > 0)
+                        max = curr;
                     curr = curr.Right;
                 }
 
-                _minNode = min;
+                _maxNode = max;
             }
         }
     }
@@ -110,13 +110,13 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
 
         FibonacciHeapNode<T, TKey> y = x.Parent;
 
-        if (y != null && x.Key.CompareTo(y.Key) < 0) {
+        if (y != null && x.Key.CompareTo(y.Key) > 0) {
             Cut(x, y);
             CascadingCut(y);
         }
 
-        if (x.Key.CompareTo(_minNode.Key) < 0) {
-            _minNode = x;
+        if (x.Key.CompareTo(_maxNode.Key) > 0) {
+            _maxNode = x;
         }
     }
 
@@ -125,11 +125,11 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
     /// O(log n)
     /// </summary>
     public void Delete(FibonacciHeapNode<T, TKey> x) {
-        // make newParent as small as possible
-        DecreaseKey(x, _minKeyValue);
+        // make newParent as large as possible
+        IncreaseKey(x, _maxKeyValue);
 
-        // remove the smallest, which decreases n also
-        RemoveMin();
+        // remove the largest, which decreases n also
+        RemoveMax();
     }
 
     /// <summary>
@@ -137,72 +137,72 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
     /// O(1)
     /// </summary>
     public void Insert(FibonacciHeapNode<T, TKey> node) {
-        // concatenate node into min list
-        if (_minNode != null) {
-            node.Left = _minNode;
-            node.Right = _minNode.Right;
-            _minNode.Right = node;
+        // concatenate node into max list
+        if (_maxNode != null) {
+            node.Left = _maxNode;
+            node.Right = _maxNode.Right;
+            _maxNode.Right = node;
             node.Right.Left = node;
 
-            if (node.Key.CompareTo(_minNode.Key) < 0) {
-                _minNode = node;
+            if (node.Key.CompareTo(_maxNode.Key) > 0) {
+                _maxNode = node;
             }
         } else {
-            _minNode = node;
+            _maxNode = node;
         }
 
         _nNodes++;
     }
 
     /// <summary>
-    /// Returns the smalles node of the heap.
+    /// Returns the largest node of the heap.
     /// O(1)
     /// </summary>
     /// <returns></returns>
-    public FibonacciHeapNode<T, TKey> Min() {
-        return _minNode;
+    public FibonacciHeapNode<T, TKey> Max() {
+        return _maxNode;
     }
 
     /// <summary>
-    /// Removes the smalles node of the heap.
+    /// Removes the largest node of the heap.
     /// O(log n) amortized
     /// </summary>
     /// <returns></returns>
-    public FibonacciHeapNode<T, TKey> RemoveMin() {
-        FibonacciHeapNode<T, TKey> minNode = _minNode;
+    public FibonacciHeapNode<T, TKey> RemoveMax() {
+        FibonacciHeapNode<T, TKey> maxNode = _maxNode;
 
-        if (minNode != null) {
-            int numKids = minNode.Degree;
-            FibonacciHeapNode<T, TKey> oldMinChild = minNode.Child;
+        if (maxNode != null) {
+            int numKids = maxNode.Degree;
+            FibonacciHeapNode<T, TKey> oldMaxChild = maxNode.Child;
 
-            // for each child of minNode do...
+            // for each child of maxNode do...
             while (numKids > 0) {
-                FibonacciHeapNode<T, TKey> tempRight = oldMinChild.Right;
+                FibonacciHeapNode<T, TKey> tempRight = oldMaxChild.Right;
 
-                // remove oldMinChild from child list
-                oldMinChild.Left.Right = oldMinChild.Right;
-                oldMinChild.Right.Left = oldMinChild.Left;
+                // remove oldMaxChild from child list
+                oldMaxChild.Left.Right = oldMaxChild.Right;
+                oldMaxChild.Right.Left = oldMaxChild.Left;
 
-                // add oldMinChild to root list of heap
-                oldMinChild.Left = _minNode;
-                oldMinChild.Right = _minNode.Right;
-                _minNode.Right = oldMinChild;
-                oldMinChild.Right.Left = oldMinChild;
+                // add oldMaxChild to root list of heap
+                oldMaxChild.Left = _maxNode;
+                oldMaxChild.Right = _maxNode.Right;
+                _maxNode.Right = oldMaxChild;
+                oldMaxChild.Right.Left = oldMaxChild;
 
-                // set parent[oldMinChild] to null
-                oldMinChild.Parent = null;
-                oldMinChild = tempRight;
+                // set parent[oldMaxChild] to null
+                oldMaxChild.Parent = null;
+                oldMaxChild = tempRight;
                 numKids--;
             }
 
-            // remove minNode from root list of heap
-            minNode.Left.Right = minNode.Right;
-            minNode.Right.Left = minNode.Left;
+            // remove maxNode from root list of heap
+            maxNode.Left.Right = maxNode.Right;
+            maxNode.Right.Left = maxNode.Left;
 
-            if (minNode == minNode.Right) {
-                _minNode = null;
+            if (maxNode == maxNode.Right) {
+                _maxNode = null;
             } else {
-                _minNode = minNode.Right;
+                _maxNode = maxNode.Right;
                 Consolidate();
             }
 
@@ -210,7 +210,7 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
             _nNodes--;
         }
 
-        return minNode;
+        return maxNode;
     }
 
     /// <summary>
@@ -228,26 +228,26 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
     /// <param name="h2"></param>
     /// <returns></returns>
     public static FibonacciHeap<T, TKey> Union(FibonacciHeap<T, TKey> h1, FibonacciHeap<T, TKey> h2) {
-        var h = new FibonacciHeap<T, TKey>(h1._minKeyValue.CompareTo(h2._minKeyValue) < 0
-            ? h1._minKeyValue
-            : h2._minKeyValue);
+        var h = new FibonacciHeap<T, TKey>(h1._maxKeyValue.CompareTo(h2._maxKeyValue) > 0
+            ? h1._maxKeyValue
+            : h2._maxKeyValue);
 
         if (h1 != null && h2 != null) {
-            h._minNode = h1._minNode;
+            h._maxNode = h1._maxNode;
 
-            if (h._minNode != null) {
-                if (h2._minNode != null) {
-                    h._minNode.Right.Left = h2._minNode.Left;
-                    h2._minNode.Left.Right = h._minNode.Right;
-                    h._minNode.Right = h2._minNode;
-                    h2._minNode.Left = h._minNode;
+            if (h._maxNode != null) {
+                if (h2._maxNode != null) {
+                    h._maxNode.Right.Left = h2._maxNode.Left;
+                    h2._maxNode.Left.Right = h._maxNode.Right;
+                    h._maxNode.Right = h2._maxNode;
+                    h2._maxNode.Left = h._maxNode;
 
-                    if (h2._minNode.Key.CompareTo(h1._minNode.Key) < 0) {
-                        h._minNode = h2._minNode;
+                    if (h2._maxNode.Key.CompareTo(h1._maxNode.Key) > 0) {
+                        h._maxNode = h2._maxNode;
                     }
                 }
             } else {
-                h._minNode = h2._minNode;
+                h._maxNode = h2._maxNode;
             }
 
             h._nNodes = h1._nNodes + h2._nNodes;
@@ -294,13 +294,13 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
 
         // Find the number of root nodes.
         var numRoots = 0;
-        FibonacciHeapNode<T, TKey> x = _minNode;
+        FibonacciHeapNode<T, TKey> x = _maxNode;
 
         if (x != null) {
             numRoots++;
             x = x.Right;
 
-            while (x != _minNode) {
+            while (x != _maxNode) {
                 numRoots++;
                 x = x.Right;
             }
@@ -323,7 +323,7 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
 
                 // There is, make one of the nodes a child of the other.
                 // Do this based on the key value.
-                if (x.Key.CompareTo(y.Key) > 0) {
+                if (x.Key.CompareTo(y.Key) < 0) {
                     FibonacciHeapNode<T, TKey> temp = y;
                     y = x;
                     x = temp;
@@ -346,9 +346,9 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
             numRoots--;
         }
 
-        // Set min to null (effectively losing the root list) and
+        // Set max to null (effectively losing the root list) and
         // reconstruct the root list from the array entries in array[].
-        _minNode = null;
+        _maxNode = null;
 
         for (var i = 0; i < arraySize; i++) {
             FibonacciHeapNode<T, TKey> y = array[i];
@@ -357,23 +357,23 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
             }
 
             // We've got a live one, add it to root list.
-            if (_minNode != null) {
+            if (_maxNode != null) {
                 // First remove node from root list.
                 y.Left.Right = y.Right;
                 y.Right.Left = y.Left;
 
                 // Now add to root list, again.
-                y.Left = _minNode;
-                y.Right = _minNode.Right;
-                _minNode.Right = y;
+                y.Left = _maxNode;
+                y.Right = _maxNode.Right;
+                _maxNode.Right = y;
                 y.Right.Left = y;
 
-                // Check if this is a new min.
-                if (y.Key.CompareTo(_minNode.Key) < 0) {
-                    _minNode = y;
+                // Check if this is a new max.
+                if (y.Key.CompareTo(_maxNode.Key) > 0) {
+                    _maxNode = y;
                 }
             } else {
-                _minNode = y;
+                _maxNode = y;
             }
         }
     }
@@ -399,9 +399,9 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
         }
 
         // add newParent to root list of heap
-        x.Left = _minNode;
-        x.Right = _minNode.Right;
-        _minNode.Right = x;
+        x.Left = _maxNode;
+        x.Right = _maxNode.Right;
+        _maxNode.Right = x;
         x.Right.Left = x;
 
         // set parent[newParent] to nil

@@ -23,11 +23,11 @@ public class GreedyHeap2 : ISolver {
         int coveredSum = 0; 
 
 
-        var heap = new FibonacciHeap<int, int>(int.MinValue);
+        var heap = new FibonacciHeap<int, int>(int.MaxValue);
         var key2Node = new FibonacciHeapNode<int,int>[size];
 
         foreach (int node in graph.GetNodes()) {
-            var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
+            var fnode = new FibonacciHeapNode<int,int>(node, graph.GetEdges(node).Count()); // POSITIVE FOR MAX HEAP
             key2Node[node] = fnode;
             heap.Insert(fnode);
             coveredNeighbors[node] = 0;
@@ -36,10 +36,10 @@ public class GreedyHeap2 : ISolver {
         while (true) {
             int selectedNode; 
             while(true) {
-                selectedNode = heap.RemoveMin().Data;
+                selectedNode = heap.RemoveMax().Data;
                 Console.WriteLine("Selected node: " + (selectedNode+1));
                 if (markChanged[selectedNode]) {
-                    int unCoveredNeighbors = -(graph.GetEdges(selectedNode).Count()-coveredNeighbors[selectedNode]);
+                    int unCoveredNeighbors = graph.GetEdges(selectedNode).Count()-coveredNeighbors[selectedNode];
 
                     Console.WriteLine("unCoveredNeighbors: " + unCoveredNeighbors);
                     if (unCoveredNeighbors != 0) { 
