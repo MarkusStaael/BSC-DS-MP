@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 
 namespace BSC_DS_MP.DataStructures.Graph;
@@ -53,6 +54,7 @@ public class NewGraph : IGraph {
         }
         edges[id].Clear();
         Nodes.Remove(id);
+        size--;
     }
 
     public IEnumerable<int> GetNodes() {
