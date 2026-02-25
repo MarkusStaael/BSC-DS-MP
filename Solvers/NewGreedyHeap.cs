@@ -16,58 +16,39 @@ public class NewGreedyHeap : ISolver {
         int size = graph.getSize();
         HashSet<int> sol = new HashSet<int>();
         BitArray covered = new BitArray(size, false);
+        int coveredCount = 0;
 
         var heap = new FibonacciHeap<int, int>(int.MaxValue);
-        var key2Node = new FibonacciHeapNode<int, int>[size];
 
-        // Initialize heap with each node's coverage count (uncovered neighbors + itself)
+        // Initialize heap with coverage (uncovered neighbors + self)
         foreach (int node in graph.GetNodes()) {
-            int coverage = graph.GetEdges(node).Count() + 1; // +1 for the node itself
+            int coverage = graph.GetEdges(node).Count() + 1;
             var fnode = new FibonacciHeapNode<int, int>(node, coverage);
-            key2Node[node] = fnode;
             heap.Insert(fnode);
         }
 
         // Greedy selection until all vertices are covered
-        while (heap.Size() > 0) {
-            // Extract node with maximum coverage
+        while (heap.Size() > 0 && coveredCount < size) {
             FibonacciHeapNode<int, int> maxNode = heap.RemoveMax();
             if (maxNode == null) break;
 
             int selectedNode = maxNode.Data;
 
-            // Skip if already covered
+            // Skip if already covered (lazy deletion)
             if (covered[selectedNode]) continue;
 
             // Add to dominating set
             sol.Add(selectedNode);
             covered[selectedNode] = true;
+            coveredCount++;
 
-            // Mark selected node's neighbors as covered
+            // Mark neighbors as covered
             foreach (int neighbor in graph.GetEdges(selectedNode)) {
-                covered[neighbor] = true;
-            }
-
-            // Update heap: decrease key for nodes whose coverage changed
-            foreach (int node in graph.GetNodes()) {
-                if (!covered[node] && key2Node[node] != null) {
-                    // Recalculate coverage: count uncovered neighbors + self
-                    int newCoverage = 1; // Count the node itself
-                    foreach (int neighbor in graph.GetEdges(node)) {
-                        if (!covered[neighbor]) {
-                            newCoverage++;
-                        }
-                    }
-
-                    // If coverage decreased, update the key
-                    if (newCoverage < key2Node[node].Key) {
-                        key2Node[node].Key = newCoverage;
-                    }
+                if (!covered[neighbor]) {
+                    covered[neighbor] = true;
+                    coveredCount++;
                 }
             }
-
-            // Stop if all vertices are covered
-            if (covered.Cast<bool>().All(x => x)) break;
         }
 
         return sol;
