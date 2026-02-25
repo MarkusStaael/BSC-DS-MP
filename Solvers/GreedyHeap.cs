@@ -8,7 +8,7 @@ using System.Text;
 using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solvers;
-
+/**
 public class GreedyHeap : ISolver {
     public ISet<int> Solve(IGraph graph) {
         bool solved = false;
@@ -57,3 +57,4 @@ public class GreedyHeap : ISolver {
         return ds;
     }
 }
+**/

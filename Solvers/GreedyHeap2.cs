@@ -1,5 +1,6 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.DataStructures.Heap;
+using BSC_DS_MP.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,10 +13,10 @@ namespace BSC_DS_MP.Solvers;
 public class GreedyHeap2 : ISolver {
     public ISet<int> Solve(IGraph graph) {
         
-        HashSet<int> ds = new();
-        BitArray inSolution = new(graph.getSize());
+        ISolution sol = new SimpleSol(graph);
+
         var heap = new FibonacciHeap<int, int>(int.MinValue);
-        var key2Node = new FibonacciHeapNode<int,int>[graph.getSize()];
+        var key2Node = new FibonacciHeapNode<int,int>[graph.getSize()+1];
 
         foreach (int node in graph.GetNodes()) {
             var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
@@ -26,21 +27,18 @@ public class GreedyHeap2 : ISolver {
         while (true) {
 
             int selectedNode = heap.RemoveMin().Data;   // Select the best 'greedy' option
-            ds.Add(selectedNode);                       // Add to dominating set
-            inSolution.Set(selectedNode, true);         // Mark that this set is in/dominated in our solution
+            sol.AddVertex(selectedNode);
 
-
-            HashSet<int> toDelete = new();
             List<int> toBeReduced = new();
             // remove next-doors, update their neighbors
             foreach(int nextdoor in graph.GetEdges(selectedNode)) {
-                if (!inSolution[nextdoor]) {
+                if (!sol.SolutionContains(nextdoor)) {
                     foreach (int secondDoor in graph.GetEdges(nextdoor)) {
                         toBeReduced.Add(secondDoor);
                     }
                 }
-                inSolution.Set(nextdoor,true); // Write down that we have used this node - basically deleted
-                heap.Delete(key2Node[nextdoor]);
+                heap.DecreaseKey(key2Node[nextdoor], int.MinValue); // Mark as deleted by setting key to max value
+                //heap.Delete(key2Node[nextdoor]);
                 //heap.IncreaseKey(key2Node[nextdoor], BigInteger.Min);
                 //toDelete.Add(nextdoor); // Mark for deletion
             }
@@ -49,19 +47,19 @@ public class GreedyHeap2 : ISolver {
             // Update edge count of neighbors 
 
             foreach (int node in toBeReduced) {
-                if (!inSolution[node])
+                if (!sol.SolutionContains(node))
                     heap.IncreaseKey(key2Node[node], -graph.GetEdges(node).Count());
             }
 
-            if (graph.GetNodes().Count() == 0) {
+            //System.Console.WriteLine(selectedNode+"->"+sol.GetSolution().Count()+ ", "+ sol.IsSolutionValid()+"/"+sol.GetCoveredSum());
+
+            if (sol.IsSolutionValid()) {
                 break;
             }
-            //
-
         }
 
 
 
-        return ds;
+        return new HashSet<int>(sol.GetSolution());
     }
 }

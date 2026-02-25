@@ -1,15 +1,15 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.DataStructures.Primitives;
 using BSC_DS_MP.Reading;
-using BSC_DS_MP.Solutions;
+using BSC_DS_MP.Solvers;
 using System.Globalization;
 using System.IO;
 
 // EDIT HERE FOR SIMPLE TESTING
-bool printResult = false;
+bool printResult = true;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
-int target = 2;
+int target = 1;
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -19,10 +19,10 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
 //ISolver solver = new GreedyHeap();
 
-RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 1");
-RunTest(new GreedyHeap2(), Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2");
-//RunTest(new GreedyHeap(), Reader.DominatingSetReader(new Uint24GraphFactory(), path), "Test 2: Using UInt24");
+RunTest(new GreedyHeap2(),  Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 1: Greedy");
+//RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
+// REMEMBER TO +1 WHEN PRINTING RESULTS
 
 void RunTest(ISolver solver,IGraph gr,string id) {
     var ts = DateTime.Now;
@@ -32,7 +32,7 @@ void RunTest(ISolver solver,IGraph gr,string id) {
     if (printResult) {
         Console.WriteLine("Result: ");
         foreach (var node in result) {
-            Console.Write(node + ", ");
+            Console.Write((node+1) + ", ");
         }
     }
 

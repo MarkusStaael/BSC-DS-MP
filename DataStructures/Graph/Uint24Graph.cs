@@ -68,6 +68,10 @@ public class Uint24Graph : IGraph {
         throw new NotImplementedException();
     }
 
+    public IGraph CloneInto(IGraphFactory fac) {
+        throw new NotImplementedException();
+    }
+
     //public override string ToString() {
     //    StringBuilder sb = new StringBuilder();
     //    foreach(KeyValuePair<int,ISet<int>> edge in Edges) {
