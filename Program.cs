@@ -6,7 +6,7 @@ using System.Globalization;
 using System.IO;
 
 // EDIT HERE FOR SIMPLE TESTING
-bool printResult = true;
+bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr" };
 int target = 1;
@@ -19,16 +19,17 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
 
 //ISolver solver = new GreedyHeap();
 
-RunTest(new GreedyHeap2(),  Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 1: Greedy");
+RunTest(new GreedyHeap2(),  Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path), "Test 1: Greedy");
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
 // REMEMBER TO +1 WHEN PRINTING RESULTS
 
 void RunTest(ISolver solver,IGraph gr,string id) {
+    Console.WriteLine("---Starting test");
     var ts = DateTime.Now;
     var result = solver.Solve(gr);
     var dt = (DateTime.Now - ts);
-    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + ". Resulting set size: " + result.Count);
+    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count());
     if (printResult) {
         Console.WriteLine("Result: ");
         foreach (var node in result) {
@@ -44,7 +45,7 @@ void RunTest(ISolver solver,IGraph gr,string id) {
         File.Create(filePath).Close();
         using (StreamWriter writer = new StreamWriter(filePath)) {
             writer.WriteLine("Test: " + id);
-            writer.WriteLine(result.Count);
+            writer.WriteLine(result.Count());
             foreach (var node in result) {
                 writer.WriteLine(node);
             }

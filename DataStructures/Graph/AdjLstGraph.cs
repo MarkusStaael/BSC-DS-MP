@@ -56,17 +56,6 @@ public class AdjLstGraph : IGraph {
     }
 
     public IEnumerable<int> GetNodes() {
-        return Enumerable.Range(0, Size); 
+        return Enumerable.Range(0, Size-1); 
     }
-    //public override string ToString() {
-    //    StringBuilder sb = new StringBuilder();
-    //    foreach(KeyValuePair<int,ISet<int>> edge in Edges) {
-    //        sb.Append(edge.Key + ": ");
-    //        foreach(int to in edge.Value) {
-    //            sb.Append(to + " ");
-    //        }
-    //        sb.Append(", ");
-    //    }
-    //    return sb.ToString();
-    //}
 }

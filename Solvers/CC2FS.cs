@@ -28,7 +28,7 @@ internal class CC2FS : ISolver {
     ISolution solstate;
     List<int> forbidlist; 
 
-    public ISet<int> Solve(IGraph graph) { 
+    public IEnumerable<int> Solve(IGraph graph) { 
         this.graph = graph;
         ConfChange = new(graph.getSize());
         ConfChange.SetAll(true); // CC2R1
@@ -39,7 +39,7 @@ internal class CC2FS : ISolver {
             freq[i] = 1;
         }
 
-        ISet<int> bestSolution = new GreedyHeap2().Solve(graph); //TODO: GREEDY CAN JUST RETURN A SOL
+        IEnumerable<int> bestSolution = new GreedyHeap2().Solve(graph); //TODO: GREEDY CAN JUST RETURN A SOL
         foreach(int i in bestSolution) {
             foreach (int neighbor in graph.GetEdges(i)) {
                 solstate.AddVertex(i);

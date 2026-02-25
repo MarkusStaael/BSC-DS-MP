@@ -31,6 +31,15 @@ internal class SimpleSol : ISolution {
         this.graph = graph;
         coveredSum = 0;
     }
+    public void AddVertex(int v) {
+        vertices.Add(v);
+        foreach (int neighbor in graph.GetEdges(v)) {
+            coveredCount[neighbor] += 1;
+            if (coveredCount[neighbor] == 1) {
+                coveredSum += 1;
+            }
+        }
+    }
     public void RemoveVertex(int v) {
         vertices.Remove(v);
         foreach (int neighbor in graph.GetEdges(v)) {
@@ -41,32 +50,21 @@ internal class SimpleSol : ISolution {
             }
         }
     }
-    public void AddVertex(int v) {
-        vertices.Add(v);
-        foreach (int neighbor in graph.GetEdges(v)) {
-            coveredCount[neighbor] += 1;
-            if (coveredCount[neighbor] == 1) {
-                coveredSum += 1;
-            }
-        }
-    }
-
     public bool IsSolutionValid() {
-        return coveredSum==(graph.getSize()-1);
+        return coveredSum==(graph.getSize());
     }
-     
     public IEnumerable<int> GetSolution() {
         return vertices;
     }
-
     public bool SolutionContains(int v) {
         return vertices.Contains(v);
     }
-
     public int GetCoveredSum() {
         return coveredSum;
     }
-
+    public int Covered(int v) {
+        return coveredCount[v];
+    }
     public bool IsCovered(int v) {
         return coveredCount[v] > 0;
     }

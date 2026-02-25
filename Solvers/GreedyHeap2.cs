@@ -4,6 +4,7 @@ using BSC_DS_MP.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Formats.Asn1;
 using System.Numerics;
 using System.Text;
 using System.Xml.Linq;
@@ -11,55 +12,75 @@ using System.Xml.Linq;
 namespace BSC_DS_MP.Solvers;
 
 public class GreedyHeap2 : ISolver {
-    public ISet<int> Solve(IGraph graph) {
-        
-        ISolution sol = new SimpleSol(graph);
+    public IEnumerable<int> Solve(IGraph graph) {
+        int size = graph.getSize();
+
+        BitArray sol = new BitArray(size, false);
+
+        BitArray markChanged = new BitArray(size, false);
+        BitArray coveredmark = new BitArray(size, false);
+        ushort[] coveredNeighbors = new ushort[size];
+        int coveredSum = 0; 
+
 
         var heap = new FibonacciHeap<int, int>(int.MinValue);
-        var key2Node = new FibonacciHeapNode<int,int>[graph.getSize()+1];
+        var key2Node = new FibonacciHeapNode<int,int>[size];
 
         foreach (int node in graph.GetNodes()) {
             var fnode = new FibonacciHeapNode<int,int>(node, -graph.GetEdges(node).Count()); // NEGATIVE SO ITS A MAX HEAP
             key2Node[node] = fnode;
             heap.Insert(fnode);
+            coveredNeighbors[node] = 0;
         }
 
         while (true) {
+            int selectedNode; 
+            while(true) {
+                selectedNode = heap.RemoveMin().Data;
+                Console.WriteLine("Selected node: " + (selectedNode+1));
+                if (markChanged[selectedNode]) {
+                    int unCoveredNeighbors = -(graph.GetEdges(selectedNode).Count()-coveredNeighbors[selectedNode]);
 
-            int selectedNode = heap.RemoveMin().Data;   // Select the best 'greedy' option
-            sol.AddVertex(selectedNode);
-
-            List<int> toBeReduced = new();
-            // remove next-doors, update their neighbors
-            foreach(int nextdoor in graph.GetEdges(selectedNode)) {
-                if (!sol.SolutionContains(nextdoor)) {
-                    foreach (int secondDoor in graph.GetEdges(nextdoor)) {
-                        toBeReduced.Add(secondDoor);
+                    Console.WriteLine("unCoveredNeighbors: " + unCoveredNeighbors);
+                    if (unCoveredNeighbors != 0) { 
+                        heap.Insert(new(selectedNode, unCoveredNeighbors));
+                        markChanged[selectedNode] = false;
+                    } else {
+                        graph.RemoveNode(selectedNode);
                     }
+
+                        continue;
                 }
-                heap.DecreaseKey(key2Node[nextdoor], int.MinValue); // Mark as deleted by setting key to max value
-                //heap.Delete(key2Node[nextdoor]);
-                //heap.IncreaseKey(key2Node[nextdoor], BigInteger.Min);
-                //toDelete.Add(nextdoor); // Mark for deletion
-            }
-            //graph.RemoveNode(nodeRef);
-
-            // Update edge count of neighbors 
-
-            foreach (int node in toBeReduced) {
-                if (!sol.SolutionContains(node))
-                    heap.IncreaseKey(key2Node[node], -graph.GetEdges(node).Count());
+                break;
             }
 
-            //System.Console.WriteLine(selectedNode+"->"+sol.GetSolution().Count()+ ", "+ sol.IsSolutionValid()+"/"+sol.GetCoveredSum());
+            sol[selectedNode] = true;
 
-            if (sol.IsSolutionValid()) {
+            foreach(int neighbor in graph.GetEdges(selectedNode)) {
+                markChanged[neighbor] = true;
+                if (!coveredmark[neighbor]) { // COUNT UP
+                    coveredmark[neighbor] = true;
+                    coveredSum++;
+                }
+                foreach(int neighbor2 in graph.GetEdges(neighbor)) {
+                    coveredNeighbors[neighbor2] += 1;
+                    markChanged[neighbor2] = true;
+                }
+            }
+            graph.RemoveNode(selectedNode);
+            Console.WriteLine((selectedNode+1) + "-> " + coveredSum + "/" + size );
+            if (coveredSum == size) {
                 break;
             }
         }
 
+        //System.Console.WriteLine(selectedNode+"->"+sol.GetSolution().Count()+ ", "+ sol.IsSolutionValid()+"/"+sol.GetCoveredSum());
+        // RETURN ENUMERABLE
+        for (int i = 0; i < sol.Length; i++) {
+            if (sol[i])
+                yield return i;
+        }
 
-
-        return new HashSet<int>(sol.GetSolution());
     }
 }
+

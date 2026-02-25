@@ -5,5 +5,5 @@ using System.Text;
 
 namespace BSC_DS_MP.Solvers; 
 internal interface ISolver {
-    public ISet<int> Solve(IGraph graph);
+    public IEnumerable<int> Solve(IGraph graph);
 }

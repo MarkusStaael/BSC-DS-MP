@@ -12,6 +12,7 @@ internal interface ISolution {
     public bool IsCovered(int v);
     public bool SolutionContains(int v);
 
+    public int Covered(int v);
     public int GetCoveredSum();
     public IEnumerable<int> GetSolution();
 }
