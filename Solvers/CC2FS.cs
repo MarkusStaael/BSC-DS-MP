@@ -157,7 +157,7 @@ internal class CC2FS : ISolver {
         int reference = -1;
         foreach (var node in graph.GetNodes()) {
             if (forbidlist.Contains(node)) continue; 
-            var score = GetFrequency(node);
+            var score = GetScore(node);
             if (score > highest) {
                 highest = score;
                 reference = node;
@@ -171,7 +171,7 @@ internal class CC2FS : ISolver {
         int highest = -1;
         int reference = -1;
         foreach (var node in graph.GetNodes()) {
-            var score = GetFrequency(node);
+            var score = GetScore(node);
             if(score > highest) {
                 highest = score;
                 reference = node;
@@ -180,7 +180,7 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public ushort GetFrequency(int v) {
+    public ushort GetScore(int u) {
 
         /**
          Definition 3For a graphG=  (V, E), and a candidate solutionS, the frequency based scoringfunction denoted byscoref, is a function such that
@@ -188,18 +188,22 @@ internal class CC2FS : ISolver {
         Remark that, in the above definition,C1is indeed the set of uncovered vertices that would be-come covered by addinguintoSandC2is the set of covered vertices that would become uncoveredby removingufromS.
          
          */
-        if (CandidateSol.GetSolution().Contains(v)) {
+        if (!CandidateSol.GetSolution().Contains(u)) {
+            // CASE: u not in S
+            // C1 = n[u] \ N[S] -> Neighborhood of u without the neighborhood of the solution.
             ushort sum = 0;
-            foreach(int neigh in graph.GetEdges(v)) {
-                if (!CandidateSol.IsCovered(neigh)) {
-                    sum += freq[neigh];
+            foreach (var v in graph.GetEdges(u)) { // Neighborhood of u
+                if (!CandidateSol.IsCovered(v)) { // Not neighbor of S / covered by S
+                    sum += freq[v];
                 }
             }
             return sum;
         } else {
+            // CASE: u in S
             ushort sum = 0;
-            foreach (int neigh in graph.GetEdges(v)) {
-                if (CandidateSol.IsCovered(neigh)) {
+            // C2 = n[u] \ N[S\{u}] -> is the set of covered vertices that would become uncoveredby removing u from S
+            foreach (int neigh in graph.GetEdges(u)) { 
+                if(CandidateSol.Covered(neigh) == 1) { // Only covered by u
                     sum -= freq[neigh];
                 }
             }
