@@ -28,7 +28,7 @@ VerifierTest();
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 
-RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazy", new AdjSetLstGraphFactory());
+RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazyHeap", new AdjSetLstGraphFactory());
 RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
@@ -39,7 +39,7 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
 
     IGraph clone = gr.CloneInto(fac);
 
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;
