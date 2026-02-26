@@ -45,7 +45,8 @@ public class AdjSetLstGraph : IGraph {
     }
 
     public IEnumerable<int> GetNodes() {
-        return Enumerable.Range(0, Size - 1);
+        // the previous implementation excluded the last index; include full range
+        return Enumerable.Range(0, Size);
     }
     public IGraph CloneInto(IGraphFactory fac) {
         IGraph ret = fac.Create(Size);

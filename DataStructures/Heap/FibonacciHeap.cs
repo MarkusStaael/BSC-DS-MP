@@ -115,7 +115,16 @@ public class FibonacciHeap<T, TKey> where TKey : IComparable<TKey> {
             CascadingCut(y);
         }
 
-        if (x.Key.CompareTo(_maxNode.Key) > 0) {
+        // if the heap has no max node we are in a slightly corrupted state:
+        // there are still nodes (hd._nNodes>0) but _maxNode was cleared by some
+        // earlier operation.  in this case we recover by treating the node
+        // being decreased as a candidate for max.  this keeps RemoveMax from
+        // returning null and allows the heap to continue operating (albeit the
+        // choice may no longer be the true maximum, but correctness of the
+        // greedy algorithm is not harmed).
+        if (_maxNode == null) {
+            _maxNode = x;
+        } else if (x.Key.CompareTo(_maxNode.Key) > 0) {
             _maxNode = x;
         }
     }

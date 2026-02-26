@@ -29,6 +29,7 @@ IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 
 RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazyHeap", new AdjSetLstGraphFactory());
+RunTest(new GreedyDecreaseKey(), graph, "Test 2: GreedyDecreaseKey", new AdjSetLstGraphFactory());
 RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
@@ -39,7 +40,7 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
 
     IGraph clone = gr.CloneInto(fac);
 
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;
@@ -50,6 +51,26 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
     int lazycount = 0;
 
     Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: "+passed);
+    if (!passed) {
+        // report the actual vertices in the solution as well
+        var solList = new List<int>(result.GetEnumerator());
+        solList.Sort();
+        Console.WriteLine("Solution vertices count: " + solList.Count + ", min=" + (solList.Count>0?solList[0].ToString():"N/A") + ", max=" + (solList.Count>0?solList[^1].ToString():"N/A"));
+        Console.WriteLine("First 20 solution nodes: " + string.Join(",", solList.Take(20)));
+
+        // print which nodes remain uncovered
+        var coveredSet = new HashSet<int>();
+        foreach (int node in solList) {
+            coveredSet.Add(node);
+            foreach (int nbr in gr.GetEdges(node)) coveredSet.Add(nbr);
+        }
+        var missing = new List<int>();
+        for (int v = 0; v < gr.getSize(); v++) {
+            if (!coveredSet.Contains(v)) missing.Add(v);
+        }
+        Console.WriteLine("Uncovered nodes (0-based): " + string.Join(",", missing.Take(200)) + (missing.Count>200?",...":""));
+        Console.WriteLine("Total uncovered count: " + missing.Count);
+    }
     if (printResult) {
         Console.WriteLine("Result: ");
         foreach(int i in result.GetEnumerator()) {

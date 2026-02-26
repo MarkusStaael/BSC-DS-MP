@@ -56,6 +56,7 @@ public class AdjLstGraph : IGraph {
     }
 
     public IEnumerable<int> GetNodes() {
-        return Enumerable.Range(0, Size-1); 
+        // nodes are 0‑based and span 0..Size-1 inclusive
+        return Enumerable.Range(0, Size);
     }
 }
