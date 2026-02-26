@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Net.Security;
+using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
@@ -13,21 +14,21 @@ namespace BSC_DS_MP.Solvers;
 internal class CC2FS : ISolver {
 
 
-    int cutofftime = 100;
+    int cutofftime = 1000;
 
     // N2(v) = second level neighbors
     // N1(V) = first level neighbors
 
     internal class SimpleSol {
         public HashSet<int> vertices; // 1m ->
-        public ushort[] coveredCount; // 1m -> 1.91 MB
+        public int[] coveredCount; // 1m -> 1.91 MB
         public bool solutionIsValid;
         public int coveredSum;
         IGraph graph;
 
         public SimpleSol(IGraph graph) {
             vertices = new HashSet<int>();
-            coveredCount = new ushort[graph.getSize()];
+            coveredCount = new int[graph.getSize()];
             foreach (int node in graph.GetNodes()) {
                 coveredCount[node] = 0;
             }
@@ -37,6 +38,11 @@ internal class CC2FS : ISolver {
         }
         public void AddVertex(int v) {
             vertices.Add(v);
+            coveredCount[v] += 1;
+            if (coveredCount[v] == 1) {
+                coveredSum += 1;
+            }
+
             foreach (int neighbor in graph.GetEdges(v)) {
                 coveredCount[neighbor] += 1;
                 if (coveredCount[neighbor] == 1) {
@@ -45,7 +51,13 @@ internal class CC2FS : ISolver {
             }
         }
         public void RemoveVertex(int v) {
+            if(!vertices.Contains(v)) throw new Exception("Vertex not in solution");
             vertices.Remove(v);
+            coveredCount[v] -= 1;
+            if (coveredCount[v] == 0) {
+                coveredSum -= 1;
+            }
+
             foreach (int neighbor in graph.GetEdges(v)) {
                 coveredCount[neighbor] -= 1;
                 if (coveredCount[neighbor] == 0) {
@@ -84,22 +96,25 @@ internal class CC2FS : ISolver {
     BitArray ConfChange; // CC2 implementatiion - P6 // 1m -> 122 KB
     IGraph graph;
     SimpleSol CandidateSol; 
-    ushort[] freq; // 1m -> 1.91 MB
+    uint[] freq; // 1m -> 1.91 MB
     List<int> forbidlist; 
 
     public ISolution Solve(IGraph graph) { 
         this.graph = graph;
         ConfChange = new(graph.getSize());
         ConfChange.SetAll(true); // CC2R1
-        freq = new ushort[graph.getSize()];// short or int
+        freq = new uint[graph.getSize()];// short or int
         for (int i = 0; i < graph.getSize(); i++) {
             freq[i] = 1;
         }
-
-        ISolution init = new GreedyLazyHeap().Solve(graph.CloneInto(new AdjSetLstGraphFactory()));
-        SimpleSol bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
-        foreach(int i in init.GetEnumerator()) {
-            bestSolution.AddVertex(i);
+        SimpleSol bestSolution;
+        {
+            ISolution init = new GreedyNoUpdate().Solve(graph.CloneInto(new AdjSetLstGraphFactory()));
+            bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
+            foreach (int i in init.GetEnumerator()) {
+                bestSolution.AddVertex(i);
+            }
+            //
         }
         
 
@@ -108,34 +123,38 @@ internal class CC2FS : ISolver {
         CandidateSol = bestSolution.Clone();
 
         while (0<cutofftime--) {
+            //Console.Write(cutofftime);
             if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetCoveredSum() < bestSolution.GetCoveredSum()) {
+                if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
                     bestSolution = CandidateSol.Clone(); // SAVE SOL IF BETTER
                 }
-                int v = VertexWithHighestScore();
+                int v = VertexWithHighestScoreInS();
                 RemoveVertex(v);
                 continue;
             } else {
-                int v = VertexWithHighestScoreWithForbid();
+                int v = VertexInSWithHighestScoreWithForbid();
                 RemoveVertex(v);
                 forbidlist = new List<int>();
 
                 while(!CandidateSol.IsSolutionValid()) {
 
-                    v = VertexWithHighestScore();
+                    v = GetCCV2(); // CCV2={v|ConfChange[v] = 1, v /∈S}
+                   
 
                     AddVertex(v);
                     forbidlist.Add(v);
 
-                    if(!IsNeighborOfSol(v)) {
-                        freq[v] += 1;
-                    }
+                    // LINE 16 -> Foreach vertex not in the Solution neighborhood, increase FREQ
+                    IncreaseFreq();
+
+
+
                 }
             }
         }
 
         var ret = new BitArraySolution(graph.getSize());
-        foreach(int i in CandidateSol.GetSolution()) {
+        foreach(int i in bestSolution.GetSolution()) {
             ret.AddVertex(i);
         }
 
@@ -143,7 +162,35 @@ internal class CC2FS : ISolver {
 
     }
 
+    public void IncreaseFreq() {
+        foreach(int v in graph.GetNodes()) {
+
+            if (CandidateSol.SolutionContains(v)) continue;
+
+            freq[v] += 1;
+
+        }
+    }
+
+    public int GetCCV2() { // CCV2={v|ConfChange[v] = 1, v /∈S}
+        int highest = int.MinValue;
+        int reference = -1;
+        foreach (int node in graph.GetNodes()) {
+            if (CandidateSol.SolutionContains(node)) continue;
+            if (!ConfChange.Get(node)) continue;
+            var score = GetScore(node);
+            if (score > highest) {
+                highest = score;
+                reference = node;
+            }
+        }
+
+        return reference;
+    }
+
     public bool IsNeighborOfSol(int v) {
+        return CandidateSol.IsCovered(v);
+
         foreach (int node in graph.GetEdges(v)) {
             if(CandidateSol.GetSolution().Contains(node)) return true;
         }
@@ -151,12 +198,25 @@ internal class CC2FS : ISolver {
 
     }
 
-    public int VertexWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
+    public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = -1;
+        int highest = int.MinValue;
         int reference = -1;
-        foreach (var node in graph.GetNodes()) {
-            if (forbidlist.Contains(node)) continue; 
+        foreach (var node in CandidateSol.GetSolution()) {
+            var score = GetScore(node);
+            if (score > highest) {
+                highest = score;
+                reference = node;
+            }
+        }
+        return reference;
+    }
+
+    public int VertexWithHighestScoreInS() { // NOTE: SEEMS EXPENSIVE
+        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
+        int highest = int.MinValue;
+        int reference = -1;
+        foreach (var node in CandidateSol.GetSolution()) {
             var score = GetScore(node);
             if (score > highest) {
                 highest = score;
@@ -168,7 +228,7 @@ internal class CC2FS : ISolver {
 
     public int VertexWithHighestScore() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = -1;
+        int highest = int.MinValue;
         int reference = -1;
         foreach (var node in graph.GetNodes()) {
             var score = GetScore(node);
@@ -180,7 +240,7 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public ushort GetScore(int u) {
+    public int GetScore(int u) {
 
         /**
          Definition 3For a graphG=  (V, E), and a candidate solutionS, the frequency based scoringfunction denoted byscoref, is a function such that
@@ -191,20 +251,20 @@ internal class CC2FS : ISolver {
         if (!CandidateSol.GetSolution().Contains(u)) {
             // CASE: u not in S
             // C1 = n[u] \ N[S] -> Neighborhood of u without the neighborhood of the solution.
-            ushort sum = 0;
+            int sum = 0;
             foreach (var v in graph.GetEdges(u)) { // Neighborhood of u
                 if (!CandidateSol.IsCovered(v)) { // Not neighbor of S / covered by S
-                    sum += freq[v];
+                    sum += (int) freq[v];
                 }
             }
             return sum;
         } else {
             // CASE: u in S
-            ushort sum = 0;
+            int sum = 0;
             // C2 = n[u] \ N[S\{u}] -> is the set of covered vertices that would become uncoveredby removing u from S
             foreach (int neigh in graph.GetEdges(u)) { 
                 if(CandidateSol.Covered(neigh) == 1) { // Only covered by u
-                    sum -= freq[neigh];
+                    sum -= (int) freq[neigh];
                 }
             }
             return sum;
@@ -223,7 +283,7 @@ internal class CC2FS : ISolver {
 
         // UPDATE IN SOL
         CandidateSol.RemoveVertex(v);
-        Console.WriteLine("Removed vertex: " + v);
+        //Console.WriteLine("Removed vertex: " + v);
     }
 
     private void AddVertex(int v) {
@@ -235,7 +295,7 @@ internal class CC2FS : ISolver {
         }
         // UPDATE IN SOL
         CandidateSol.AddVertex(v);
-        Console.WriteLine("Added vertex: " + v);
+        //Console.WriteLine("Added vertex: " + v);
     }
 
     private HashSet<int> SecondNeighborhood(int v) {
