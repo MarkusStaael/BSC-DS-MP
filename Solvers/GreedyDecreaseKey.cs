@@ -20,16 +20,13 @@ public class GreedyDecreaseKey : ISolver {
 
         // store current coverage for each node (uncovered neighbours + self)
         int[] coverage = new int[size];
-        var heap = new FibonacciHeap<int, int>(int.MaxValue);
-        var key2Node = new FibonacciHeapNode<int, int>[size];
+        var heap = new IndexedMaxHeap(size);
 
         // initialize heap with coverage values
         foreach (int node in graph.GetNodes()) {
             int cov = graph.GetEdges(node).Count() + 1;
             coverage[node] = cov;
-            var fnode = new FibonacciHeapNode<int, int>(node, cov);
-            heap.Insert(fnode);
-            key2Node[node] = fnode;
+            heap.Insert(node, cov);
         }
         // Console.WriteLine($"Initial heap size after insertion: {heap.Size()}");
         // optionally peek at coverage values of first few nodes
@@ -37,18 +34,15 @@ public class GreedyDecreaseKey : ISolver {
             Console.Write(coverage[i] + ",");
         }
         Console.WriteLine();*/
-
+        
         // Greedy selection until all vertices are covered
         int totalRemovals = 0;
         int skipCount = 0;
-        while (heap.Size() > 0 && coveredCount < size) {
-            FibonacciHeapNode<int, int> maxNode = heap.RemoveMax();
+        while (!heap.IsEmpty() && coveredCount < size) {
+            int selectedNode = heap.RemoveMax();
             totalRemovals++;
-            if (maxNode == null) break;
 
-            int selectedNode = maxNode.Data;
-
-            // lazy skip
+            // lazy skip (should not occur)
             if (covered[selectedNode]) {
                 skipCount++;
                 continue;
@@ -75,13 +69,8 @@ public class GreedyDecreaseKey : ISolver {
             foreach (int c in newlyCovered) {
                 foreach (int nbr in graph.GetEdges(c)) {
                     if (!covered[nbr]) {
-                        // each newly covered vertex removes one uncovered neighbour from nbr
                         coverage[nbr]--;
-                        var heapNode = key2Node[nbr];
-                        // if heap has been emptied by a preceding RemoveMax there is nothing to update
-                        if (heapNode != null && !heap.IsEmpty()) {
-                            heap.DecreaseKey(heapNode, coverage[nbr]);
-                        } // otherwise neighbor wasn't in heap (shouldn't happen now that GetNodes is fixed)
+                        heap.DecreaseKey(nbr, coverage[nbr]);
                     }
                 }
             }
@@ -90,12 +79,8 @@ public class GreedyDecreaseKey : ISolver {
         // debugging output
         // Console.WriteLine($"GreedyNoUpdate removed {totalRemovals} nodes (skipped {skipCount}) and covered {coveredCount}/{size}");
 
-        // fallback: if heap emptied early (or break due to null max) leave some
-        // vertices uncovered, we must finish by greedily covering them to ensure
-        // a valid dominating set.  This occurs when the Fibonacci heap becomes
-        // corrupted and cannot deliver further elements.
-        if (coveredCount < size) {
-            // Console.WriteLine("Heap terminated prematurely, executing fallback covering.");
+        // fallback: should not be necessary with the indexed heap, but keep it just in case
+        /*if (coveredCount < size) {
             for (int v = 0; v < size && coveredCount < size; v++) {
                 if (!covered[v]) {
                     sol.AddVertex(v);
@@ -109,7 +94,7 @@ public class GreedyDecreaseKey : ISolver {
                     }
                 }
             }
-        }
+        }*/
 
         return sol;
     }

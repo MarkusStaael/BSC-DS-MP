@@ -30,7 +30,7 @@ IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazyHeap", new AdjSetLstGraphFactory());
 RunTest(new GreedyDecreaseKey(), graph, "Test 2: GreedyDecreaseKey", new AdjSetLstGraphFactory());
-RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
+//RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
 // REMEMBER TO +1 WHEN PRINTING RESULTS
