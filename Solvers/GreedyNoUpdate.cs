@@ -12,7 +12,7 @@ using System.Xml.Linq;
 namespace BSC_DS_MP.Solvers;
 
 public class GreedyNoUpdate : ISolver {
-    public ISolution Solve(IGraph graph) {
+    public ISolution Solve(IGraph graph, CancellationToken? token) {
         int size = graph.getSize();
         ISolution sol = new HashSetSolution(size);
         BitArray covered = new BitArray(size, false);

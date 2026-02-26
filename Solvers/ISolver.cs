@@ -7,5 +7,5 @@ using System.Text;
 
 namespace BSC_DS_MP.Solvers; 
 internal interface ISolver {
-    public ISolution Solve(IGraph graph);
+    public ISolution Solve(IGraph graph, CancellationToken? token);
 }

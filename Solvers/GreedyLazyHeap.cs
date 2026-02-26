@@ -12,7 +12,7 @@ using System.Xml.Linq;
 namespace BSC_DS_MP.Solvers;
 
 public class GreedyLazyHeap : ISolver {
-    public ISolution Solve(IGraph graph) {
+    public ISolution Solve(IGraph graph, CancellationToken? token) {
         int size = graph.getSize();
 
 

@@ -13,9 +13,6 @@ namespace BSC_DS_MP.Solvers;
 
 internal class CC2FS : ISolver {
 
-
-    int cutofftime = 1000;
-
     // N2(v) = second level neighbors
     // N1(V) = first level neighbors
 
@@ -99,7 +96,10 @@ internal class CC2FS : ISolver {
     uint[] freq; // 1m -> 1.91 MB
     List<int> forbidlist; 
 
-    public ISolution Solve(IGraph graph) { 
+    public ISolution Solve(IGraph graph, CancellationToken? token) { 
+
+        if (token == null) throw new Exception("CC2FS needs a CancellationToken");
+
         this.graph = graph;
         ConfChange = new(graph.getSize());
         ConfChange.SetAll(true); // CC2R1
@@ -109,7 +109,7 @@ internal class CC2FS : ISolver {
         }
         SimpleSol bestSolution;
         {
-            ISolution init = new GreedyNoUpdate().Solve(graph.CloneInto(new AdjSetLstGraphFactory()));
+            ISolution init = new GreedyLazyHeap().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
             bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
             foreach (int i in init.GetEnumerator()) {
                 bestSolution.AddVertex(i);
@@ -122,8 +122,7 @@ internal class CC2FS : ISolver {
 
         CandidateSol = bestSolution.Clone();
 
-        while (0<cutofftime--) {
-            //Console.Write(cutofftime);
+        while (!((CancellationToken) token).IsCancellationRequested) {
             if (CandidateSol.IsSolutionValid()) {
                 if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
                     bestSolution = CandidateSol.Clone(); // SAVE SOL IF BETTER

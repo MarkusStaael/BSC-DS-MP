@@ -13,7 +13,7 @@ using System.Xml.Linq;
 bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
-int target = 1;
+int target = 2;
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -28,7 +28,7 @@ VerifierTest();
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 
-RunTest(new GreedyNoUpdate(), graph, "Test 1: GreedyLazy", new AdjSetLstGraphFactory());
+RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazy", new AdjSetLstGraphFactory());
 RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
 //RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
@@ -39,8 +39,11 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
 
     IGraph clone = gr.CloneInto(fac);
 
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+    CancellationToken token = cts.Token;
+
     var ts = DateTime.Now;
-    ISolution result = solver.Solve(clone);
+    ISolution result = solver.Solve(clone,token);
     var dt = (DateTime.Now - ts);
 
     bool passed = Verifier.Verify(result, gr);
