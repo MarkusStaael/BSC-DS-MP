@@ -6,6 +6,8 @@ namespace BSC_DS_MP.Util;
 public interface ISolution {
 
     public void AddVertex(int v);
+    //public void RemoveVertex(int v);
+
     public int Count();
     public IEnumerable<int> GetEnumerator();
 
