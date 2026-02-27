@@ -1,9 +1,11 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.Util;
+using ScottPlot;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Net.Security;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
@@ -94,9 +96,16 @@ internal class CC2FS : ISolver {
     IGraph graph;
     SimpleSol CandidateSol; 
     uint[] freq; // 1m -> 1.91 MB
-    List<int> forbidlist; 
+    List<int> forbidlist;
 
-    public ISolution Solve(IGraph graph, CancellationToken? token) { 
+
+    public ISolution Solve(IGraph graph, CancellationToken? token) {
+
+
+        // STUFF
+        var size_plot = new List<int>();
+        var time_plot = new List<long>();
+        //int iter = 0;
 
         if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
@@ -122,7 +131,12 @@ internal class CC2FS : ISolver {
 
         CandidateSol = bestSolution.Clone();
 
+        var sw = Stopwatch.StartNew();
+
+
         while (!((CancellationToken) token).IsCancellationRequested) {
+            size_plot.Add(CandidateSol.GetSolution().Count());
+            time_plot.Add(sw.ElapsedMilliseconds);
             if (CandidateSol.IsSolutionValid()) {
                 if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
                     bestSolution = CandidateSol.Clone(); // SAVE SOL IF BETTER
@@ -156,6 +170,14 @@ internal class CC2FS : ISolver {
         foreach(int i in bestSolution.GetSolution()) {
             ret.AddVertex(i);
         }
+
+
+        int[] xs = size_plot.ToArray();
+        long[] ys = time_plot.ToArray();
+
+        var plt = new Plot();
+        plt.Add.Scatter(ys, xs);
+        plt.SavePng("quickstart.png", 400, 300);
 
         return ret;
 

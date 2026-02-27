@@ -9,6 +9,8 @@ using System.Globalization;
 using System.IO;
 using System.Xml.Linq;
 
+
+
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
 bool toFile = false;
@@ -39,7 +41,7 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
 
     IGraph clone = gr.CloneInto(fac);
 
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(600));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;
