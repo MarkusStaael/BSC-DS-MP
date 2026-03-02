@@ -107,19 +107,26 @@ internal class CC2FS : ISolver {
         }
     }
 
+    
+
     BitArray ConfChange; // CC2 implementatiion - P6 // 1m -> 122 KB
     IGraph graph;
     SimpleSol CandidateSol; 
     uint[] freq; // 1m -> 1.91 MB
-    List<int> forbidlist;
+    HashSet<int> forbidlist;
     List<int> addCandidates;
+    List<int>[] TwoLevelNeighborhood;
 
-    public CC2FS() {
+    public CC2FS(IGraph graph) {
+        this.graph = graph;
         addCandidates = new List<int>();
+        forbidlist = new HashSet<int>();
     }
 
 
     public ISolution Solve(IGraph graph, CancellationToken? token) {
+
+        
 
         // STUFF
         var size_plot = new List<int>();
@@ -128,7 +135,35 @@ internal class CC2FS : ISolver {
 
         if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
-        this.graph = graph;
+
+        TwoLevelNeighborhood = new List<int>[graph.getSize()];
+
+        {
+            int n = graph.getSize();
+            int[] mark = new int[n];
+            int currentMark = 1;
+
+            for (int v = 0; v < n; v++) {
+                TwoLevelNeighborhood[v] = new List<int>();
+                int stamp = currentMark++;
+
+                // forbid v and N(v)
+                mark[v] = stamp;
+                foreach (int u in graph.GetEdges(v))
+                    mark[u] = stamp;
+
+                // collect N2(v)
+                foreach (int u in graph.GetEdges(v)) {
+                    foreach (int w in graph.GetEdges(u)) {
+                        if (mark[w] != stamp) {
+                            mark[w] = stamp;
+                            TwoLevelNeighborhood[v].Add(w);
+                        }
+                    }
+                }
+            }
+        } // SET TWOLEVELNEIGHBORHOOD
+
         ConfChange = new(graph.getSize());
         ConfChange.SetAll(true); // CC2R1
         freq = new uint[graph.getSize()];// short or int
@@ -138,17 +173,9 @@ internal class CC2FS : ISolver {
         SimpleSol bestSolution;
         {
             ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
-            bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
-            
+            bestSolution = new SimpleSol(graph);
             bestSolution.InitFromSol(init);
-
-            //
         }
-        
-
-
-        forbidlist = new List<int>();
-
         CandidateSol = bestSolution.Clone();
         foreach (int i in graph.GetNodes()) {
             if (CandidateSol.SolutionContains(i)) continue;
@@ -172,7 +199,7 @@ internal class CC2FS : ISolver {
             } else {
                 int v = VertexInSWithHighestScoreWithForbid();
                 RemoveVertex(v);
-                forbidlist = new List<int>();
+                forbidlist.Clear();
 
                 while(!CandidateSol.IsSolutionValid()) {
 
@@ -300,7 +327,7 @@ internal class CC2FS : ISolver {
          * CC2 RULE 2: When removing a vertex v from the candidate solution S,
          * ConfChange[v] isset to 0, and for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        foreach(int u in OpenTwoNeighborhood(v)) {
+        foreach(int u in TwoLevelNeighborhood[v]) {
             if (ConfChange[u] == false) {
                 addCandidates.Add(u);
             }
@@ -317,7 +344,7 @@ internal class CC2FS : ISolver {
         /**
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        foreach (int u in OpenTwoNeighborhood(v)) {
+        foreach (int u in TwoLevelNeighborhood[v]) {
             if (ConfChange[u] == false) {
                 addCandidates.Add(u);
             }
@@ -326,22 +353,5 @@ internal class CC2FS : ISolver {
         // UPDATE IN SOL
         CandidateSol.AddVertex(v);
         //Console.WriteLine("Added vertex: " + (v + 1) + "("+ CandidateSol.GetCoveredSum() + "/" +graph.getSize()+")");
-    }
-
-    private IEnumerable<int> OpenTwoNeighborhood(int v ) {
-        // THOSE EXACTLY 2 AWAY, EXCLUDING V AND NEIGHBORS OF V
-        HashSet<int> excluded = new HashSet<int>();
-        excluded.Add(v);
-        HashSet<int> secondNeighborhood = new();
-
-        foreach (int neighbor in graph.GetEdges(v)) {
-            excluded.Add(neighbor);
-            foreach (int secondNeighbor in graph.GetEdges(neighbor)) {
-                secondNeighborhood.Add(secondNeighbor);
-            }
-        }
-
-        secondNeighborhood.ExceptWith(excluded);
-        return secondNeighborhood;
     }
 }

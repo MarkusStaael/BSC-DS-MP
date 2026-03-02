@@ -25,7 +25,7 @@ VerifierTest();
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 //RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FS(), graph, "Test 2: CC2FS", new AdjSetLstGraphFactory(), true);
+RunTest(new CC2FS(graph), graph, "Test 2: CC2FS", new AdjSetLstGraphFactory(), true);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
