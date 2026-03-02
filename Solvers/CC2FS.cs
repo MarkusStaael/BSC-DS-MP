@@ -12,7 +12,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace BSC_DS_MP.Solvers;
-
+// https://jair.org/index.php/jair/article/view/11044/26218
 internal class CC2FS : ISolver {
 
     // N2(v) = second level neighbors
@@ -211,16 +211,6 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public bool IsNeighborOfSol(int v) {
-        return CandidateSol.IsCovered(v);
-
-        foreach (int node in graph.GetEdges(v)) {
-            if(CandidateSol.GetSolution().Contains(node)) return true;
-        }
-        return false;
-
-    }
-
     public int VertexInSWithHighestScoreWithForbid() {
         int highest = int.MinValue;
         int reference = -1;
@@ -249,20 +239,6 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public int VertexWithHighestScore() { // NOTE: SEEMS EXPENSIVE
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in graph.GetNodes()) {
-            var score = GetScore(node);
-            if(score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
-    }
-
     public int GetScore(int u) {
 
         /**
@@ -280,6 +256,10 @@ internal class CC2FS : ISolver {
                     sum += (int) freq[v];
                 }
             }
+            if(!CandidateSol.IsCovered(u)) {
+                sum += (int)freq[u];
+            }
+
             return sum;
         } else {
             // CASE: u in S
@@ -289,6 +269,9 @@ internal class CC2FS : ISolver {
                 if(CandidateSol.Covered(neigh) == 1) { // Only covered by u
                     sum -= (int) freq[neigh];
                 }
+            }
+            if (CandidateSol.Covered(u) == 1) {
+                sum -= (int)freq[u];
             }
             return sum;
         }
