@@ -150,7 +150,7 @@ internal class CC2FS : ISolver {
                 if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
                     bestSolution = CandidateSol.Clone(); // SAVE SOL IF BETTER
                 }
-                int v = VertexWithHighestScoreInS();
+                int v = VertexInSWithHighestScoreWithForbid();
                 // IDEA: WHEN REMOVING HAVE TWO HEAPS, ONE WITH FORBID AND ONE WITH IN S, COMPARE THE TWO AND POP THE LARGER
                 RemoveVertex(v);
                 continue;
@@ -215,24 +215,6 @@ internal class CC2FS : ISolver {
 
         return reference;
     }
-
-    public int VertexInSWithHighestScoreWithForbid() {
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in CandidateSol.GetSolution()) {
-            if (forbidlist.Contains(node)) continue;
-            var score = GetScore(node);
-            if (score > highest) {
-                highest = score;
-                reference = addCandidates[i];
-                index = i;
-            }
-        }
-        addCandidates.RemoveAt(index);
-        
-        return reference;
-    }
-
     public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
@@ -327,21 +309,4 @@ internal class CC2FS : ISolver {
         secondNeighborhood.ExceptWith(excluded);
         return secondNeighborhood;
     }
-
-    private IEnumerable<int> OpenTwoNeighborhood(int v) {
-        // THOSE EXACTLY 2 AWAY, EXCLUDING V AND NEIGHBORS OF V
-        HashSet<int> excluded = new HashSet<int>();
-        excluded.Add(v);
-        HashSet<int> secondNeighborhood = new();
-
-        foreach (int neighbor in graph.GetEdges(v)) {
-            excluded.Add(neighbor);
-            foreach (int secondNeighbor in graph.GetEdges(neighbor)) {
-                secondNeighborhood.Add(secondNeighbor);
-            }
-        }
-
-        secondNeighborhood.ExceptWith(excluded);
-        return secondNeighborhood;
-    } 
 }
