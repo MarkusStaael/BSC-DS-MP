@@ -178,7 +178,7 @@ internal class CC2FS : ISolver {
         var plt = new Plot();
         plt.Add.Scatter(ys, xs);
         double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-        plt.Add.Text(("Iterations: " + size_plot.Count() + ". It/s: " + itps), 10, 10);
+        plt.Title(("Iterations: " + size_plot.Count() + ". It/s: " + itps));
         plt.SavePng("quickstart.png", 1000, 700);
 
         return ret;
@@ -188,7 +188,7 @@ internal class CC2FS : ISolver {
     public void IncreaseFreq() {
         foreach(int v in graph.GetNodes()) {
 
-            if (CandidateSol.SolutionContains(v)) continue;
+            if (CandidateSol.IsCovered(v)) continue;
 
             freq[v] += 1;
 
@@ -221,11 +221,11 @@ internal class CC2FS : ISolver {
 
     }
 
-    public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
+    public int VertexInSWithHighestScoreWithForbid() {
         int highest = int.MinValue;
         int reference = -1;
         foreach (var node in CandidateSol.GetSolution()) {
+            if (forbidlist.Contains(node)) continue;
             var score = GetScore(node);
             if (score > highest) {
                 highest = score;

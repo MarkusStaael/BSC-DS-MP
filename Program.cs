@@ -30,9 +30,8 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(), false);
-RunTest(new Greedy(), graph, "Test 2: Optimized: GreedyDecreaseKey", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FS(), graph, "Test 3: CC2FS", new AdjSetLstGraphFactory(), true);
+//RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(), false);
+RunTest(new CC2FS(), graph, "Test 2: CC2FS", new AdjSetLstGraphFactory(), true);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
@@ -103,6 +102,11 @@ void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup
         Console.WriteLine("toFile is set to false, skipping file writing.");
     }
 }
+
+
+
+
+
 void VerifierTest() {
     IGraph gr = new AdjSetLstGraph(3);
     gr.AddEdge(0, 1);
