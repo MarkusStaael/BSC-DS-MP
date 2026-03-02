@@ -1,5 +1,4 @@
 ﻿using BSC_DS_MP.DataStructures.Graph;
-using BSC_DS_MP.DataStructures.Primitives;
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
