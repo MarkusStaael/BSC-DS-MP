@@ -9,6 +9,7 @@ public interface ISolution {
     //public void RemoveVertex(int v);
 
     public int Count();
+
     public IEnumerable<int> GetEnumerator();
 
     //public void AddVertex(int v);

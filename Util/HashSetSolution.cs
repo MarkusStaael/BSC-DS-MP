@@ -15,6 +15,10 @@ public class HashSetSolution : ISolution {
         vertices.Add(v);
     }
 
+    public bool Contains(int v) {
+        return vertices.Contains(v);
+    }
+
     public int Count() {
         return vertices.Count;
     }

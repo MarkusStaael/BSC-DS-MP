@@ -3,19 +3,14 @@ using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
 using BSC_DS_MP.Verifier;
-using System.Collections;
 using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Xml.Linq;
-
-
 
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
+int timelimit = 60; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -38,7 +33,7 @@ void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup
 
     IGraph clone = gr.CloneInto(fac);
 
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;

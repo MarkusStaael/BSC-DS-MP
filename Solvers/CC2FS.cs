@@ -21,6 +21,7 @@ internal class CC2FS : ISolver {
 
     internal class SimpleSol {
         public HashSet<int> vertices; // 1m ->
+        public HashSet<int> uncoveredVertices;
         public int[] coveredCount; // 1m -> 1.91 MB
         public int coveredSum;
         IGraph graph;
@@ -28,23 +29,37 @@ internal class CC2FS : ISolver {
         public SimpleSol(IGraph graph) {
             vertices = new HashSet<int>();
             coveredCount = new int[graph.getSize()];
+            uncoveredVertices = new(); // SHOULD BE SMALL
             foreach (int node in graph.GetNodes()) {
                 coveredCount[node] = 0;
             }
             this.graph = graph;
             coveredSum = 0;
         }
+
+        public void InitFromSol(ISolution sol) {
+            foreach (int i in sol.GetEnumerator()) {
+                AddVertex(i);
+            }
+            foreach(int i in graph.GetNodes()) {
+                if (!IsCovered(i)) {
+                    uncoveredVertices.Add(i);
+                }
+            }
+        }
         public void AddVertex(int v) {
             vertices.Add(v);
             coveredCount[v] += 1;
             if (coveredCount[v] == 1) {
                 coveredSum += 1;
+                uncoveredVertices.Remove(v);
             }
 
             foreach (int neighbor in graph.GetEdges(v)) {
                 coveredCount[neighbor] += 1;
                 if (coveredCount[neighbor] == 1) {
                     coveredSum += 1;
+                    uncoveredVertices.Remove(neighbor);
                 }
             }
         }
@@ -54,12 +69,14 @@ internal class CC2FS : ISolver {
             coveredCount[v] -= 1;
             if (coveredCount[v] == 0) {
                 coveredSum -= 1;
+                uncoveredVertices.Add(v);
             }
 
             foreach (int neighbor in graph.GetEdges(v)) {
                 coveredCount[neighbor] -= 1;
                 if (coveredCount[neighbor] == 0) {
                     coveredSum -= 1;
+                    uncoveredVertices.Add(neighbor);
                 }
             }
         }
@@ -120,12 +137,10 @@ internal class CC2FS : ISolver {
         }
         SimpleSol bestSolution;
         {
-            ISolution init = new GreedyLazyHeap().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
+            ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
             bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
             
-            foreach (int i in init.GetEnumerator()) {
-                bestSolution.AddVertex(i);
-            }
+            bestSolution.InitFromSol(init);
 
             //
         }
@@ -161,8 +176,8 @@ internal class CC2FS : ISolver {
 
                 while(!CandidateSol.IsSolutionValid()) {
 
-                    //v = GetCCV2New(); // CCV2={v|ConfChange[v] = 1, v /∈S}
-                    v = GetCCV2();
+                    v = GetCCV2New(); // CCV2={v|ConfChange[v] = 1, v /∈S}
+                    //v = GetCCV2();
                     //Console.WriteLine("Selecteed vertex: " + (v+1) + " SCORE: "+GetScore(v));
                     AddVertex(v);
 
@@ -192,12 +207,27 @@ internal class CC2FS : ISolver {
     }
 
     public void IncreaseFreq() {
-        foreach(int v in graph.GetNodes()) {
-
-            if (CandidateSol.IsCovered(v)) continue;
-
+        foreach(int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;
         }
+    }
+
+    public int GetCCV2New() {
+
+        int highest = int.MinValue;
+        int reference = -1;
+        int index = -1;
+        for (int i = 0; i < addCandidates.Count; i++) {
+            var score = GetScore(addCandidates[i]);
+            if (score > highest) {
+                highest = score;
+                reference = addCandidates[i];
+                index = i;
+            }
+        }
+        addCandidates.RemoveAt(index);
+
+        return reference;
     }
 
     public int GetCCV2() { // CCV2={v|ConfChange[v] = 1, v /∈S}
@@ -270,8 +300,10 @@ internal class CC2FS : ISolver {
          * CC2 RULE 2: When removing a vertex v from the candidate solution S,
          * ConfChange[v] isset to 0, and for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        ConfChange.Set(v, false);
         foreach(int u in OpenTwoNeighborhood(v)) {
+            if (ConfChange[u] == false) {
+                addCandidates.Add(u);
+            }
             ConfChange.Set(u, true);
         }
         ConfChange.Set(v, false); // UPDATE
@@ -286,6 +318,9 @@ internal class CC2FS : ISolver {
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
         foreach (int u in OpenTwoNeighborhood(v)) {
+            if (ConfChange[u] == false) {
+                addCandidates.Add(u);
+            }
             ConfChange.Set(u, true);
         }
         // UPDATE IN SOL
