@@ -5,6 +5,7 @@ using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
 using BSC_DS_MP.Verifier;
 using System.Collections;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Xml.Linq;
@@ -19,9 +20,9 @@ int target = 2;
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
-string path = Path.GetFullPath(Path.Combine(projroot, "data",targetTest));
+string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
-// "UNIT" tests 
+// Tests 
 VerifierTest();
 
 
@@ -29,36 +30,62 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
+RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(), false);
+RunTest(new Greedy(), graph, "Test 2: Optimized: GreedyDecreaseKey", new AdjSetLstGraphFactory(), false);
+RunTest(new CC2FS(), graph, "Test 3: CC2FS", new AdjSetLstGraphFactory(), true);
 
-RunTest(new GreedyLazyHeap(), graph, "Test 1: GreedyLazy", new AdjSetLstGraphFactory());
-RunTest(new CC2FS(), graph, "CC2FS", new AdjSetLstGraphFactory());
-//RunTest(new CC2FS(),        Reader.DominatingSetReader(new AdjLstGraphFactory(), path), "Test 2: CC2FS");
 
-// REMEMBER TO +1 WHEN PRINTING RESULTS
-
-void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
+void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
     Console.WriteLine("---Starting test");
 
     IGraph clone = gr.CloneInto(fac);
 
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(600));
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;
-    ISolution result = solver.Solve(clone,token);
+    ISolution result = solver.Solve(clone, token);
     var dt = (DateTime.Now - ts);
 
     bool passed = Verifier.Verify(result, gr);
     int lazycount = 0;
 
-    Console.WriteLine("Test \""+id+"\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: "+passed);
+    Console.WriteLine("Test \"" + id + "\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: " + passed);
+    if (!passed) {
+        // report the actual vertices in the solution as well
+        var solList = new List<int>(result.GetEnumerator());
+        solList.Sort();
+        Console.WriteLine("Solution vertices count: " + solList.Count + ", min=" + (solList.Count > 0 ? solList[0].ToString() : "N/A") + ", max=" + (solList.Count > 0 ? solList[^1].ToString() : "N/A"));
+        Console.WriteLine("First 20 solution nodes: " + string.Join(",", solList.Take(20)));
+
+        // print which nodes remain uncovered
+        var coveredSet = new HashSet<int>();
+        foreach (int node in solList) {
+            coveredSet.Add(node);
+            foreach (int nbr in gr.GetEdges(node)) coveredSet.Add(nbr);
+        }
+        var missing = new List<int>();
+        for (int v = 0; v < gr.getSize(); v++) {
+            if (!coveredSet.Contains(v)) missing.Add(v);
+        }
+        Console.WriteLine("Uncovered nodes (0-based): " + string.Join(",", missing.Take(200)) + (missing.Count > 200 ? ",..." : ""));
+        Console.WriteLine("Total uncovered count: " + missing.Count);
+    }
     if (printResult) {
         Console.WriteLine("Result: ");
-        foreach(int i in result.GetEnumerator()) {
+        foreach (int i in result.GetEnumerator()) {
             Console.Write((i + 1) + ", ");
         }
     }
-    
+    if (popup) {
+        string ppath = Path.Combine(AppContext.BaseDirectory, "quickstart.png");
+
+        Process.Start(new ProcessStartInfo {
+            FileName = ppath,
+            UseShellExecute = true
+        });
+    }
+
     if (toFile) {
         Console.WriteLine("Writing to file...");
         string outputDir = Path.Combine(projroot, "SolvedOutput");
@@ -76,7 +103,6 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
         Console.WriteLine("toFile is set to false, skipping file writing.");
     }
 }
-
 void VerifierTest() {
     IGraph gr = new AdjSetLstGraph(3);
     gr.AddEdge(0, 1);
@@ -89,4 +115,3 @@ void VerifierTest() {
     if (Verifier.Verify(sol, gr) == false) throw new Exception("Verifier test 2 failed: expected true, got false");
     Console.WriteLine("Verifier tests passed");
 }
-

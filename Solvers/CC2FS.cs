@@ -177,7 +177,9 @@ internal class CC2FS : ISolver {
 
         var plt = new Plot();
         plt.Add.Scatter(ys, xs);
-        plt.SavePng("quickstart.png", 400, 300);
+        double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
+        plt.Add.Text(("Iterations: " + size_plot.Count() + ". It/s: " + itps), 10, 10);
+        plt.SavePng("quickstart.png", 1000, 700);
 
         return ret;
 
