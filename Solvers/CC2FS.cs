@@ -95,6 +95,11 @@ internal class CC2FS : ISolver {
     SimpleSol CandidateSol; 
     uint[] freq; // 1m -> 1.91 MB
     List<int> forbidlist;
+    List<int> addCandidates;
+
+    public CC2FS() {
+        addCandidates = new List<int>();
+    }
 
 
     public ISolution Solve(IGraph graph, CancellationToken? token) {
@@ -130,11 +135,10 @@ internal class CC2FS : ISolver {
         forbidlist = new List<int>();
 
         CandidateSol = bestSolution.Clone();
-        //foreach (int i in graph.GetNodes()) {
-        //    if (CandidateSol.SolutionContains(i)) continue;
-        //
-        //    //Console.WriteLine("Inserted " + (i + 1) + " into CCV2HEAP");
-        //}
+        foreach (int i in graph.GetNodes()) {
+            if (CandidateSol.SolutionContains(i)) continue;
+            addCandidates.Add(i);
+        }
 
         var sw = Stopwatch.StartNew();
 
@@ -157,7 +161,8 @@ internal class CC2FS : ISolver {
 
                 while(!CandidateSol.IsSolutionValid()) {
 
-                    v = GetCCV2(); // CCV2={v|ConfChange[v] = 1, v /∈S}
+                    //v = GetCCV2New(); // CCV2={v|ConfChange[v] = 1, v /∈S}
+                    v = GetCCV2();
                     //Console.WriteLine("Selecteed vertex: " + (v+1) + " SCORE: "+GetScore(v));
                     AddVertex(v);
 
@@ -178,7 +183,7 @@ internal class CC2FS : ISolver {
 
         var plt = new Plot();
         plt.Add.Scatter(ys, xs);
-        double itps = size_plot.Count / time_plot[time_plot.Count()-1];
+        double itps = 60 * size_plot.Count / ((double) time_plot[time_plot.Count()-1]);
         plt.Add.Text(("Iterations: " + size_plot.Count() + ". It/s: " + itps), 10, 10);
         plt.SavePng("quickstart.png", 1000, 700);
 
@@ -210,6 +215,23 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
+    public int GetCCV2New() {
+        int highest = int.MinValue;
+        int reference = -1;
+        int index = -1;
+        for(int i = 0; i < addCandidates.Count;i++) {
+            var score = GetScore(addCandidates[i]);
+            if (score > highest) {
+                highest = score;
+                reference = addCandidates[i];
+                index = i;
+            }
+        }
+        addCandidates.RemoveAt(index);
+        
+        return reference;
+    }
+
     public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
@@ -232,20 +254,6 @@ internal class CC2FS : ISolver {
         foreach (var node in CandidateSol.GetSolution()) {
             var score = GetScore(node);
             if (score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
-    }
-
-    public int VertexWithHighestScore() { // NOTE: SEEMS EXPENSIVE
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in graph.GetNodes()) {
-            var score = GetScore(node);
-            if(score > highest) {
                 highest = score;
                 reference = node;
             }
@@ -294,6 +302,9 @@ internal class CC2FS : ISolver {
          */
         
         foreach(int u in OpenTwoNeighborhood(v)) {
+            if (!ConfChange[u]) {
+                addCandidates.Add(u);
+            }
             ConfChange.Set(u, true);
         }
         ConfChange.Set(v, false); // UPDATE
@@ -308,6 +319,9 @@ internal class CC2FS : ISolver {
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
         foreach (int u in OpenTwoNeighborhood(v)) {
+            if (!ConfChange[u]) {
+                addCandidates.Add(u);
+            }
             ConfChange.Set(u, true);
         }
         // UPDATE IN SOL
@@ -331,14 +345,4 @@ internal class CC2FS : ISolver {
         secondNeighborhood.ExceptWith(excluded);
         return secondNeighborhood;
     }
-
-    private HashSet<int> SecondNeighborhood(int v) {
-        HashSet<int> secondNeighborhood = new();
-        foreach (int neighbor in graph.GetEdges(v)) {
-            foreach(int secondNeighbor in graph.GetEdges(neighbor)) {
-                secondNeighborhood.Add(secondNeighbor);
-            }
-        }
-        return secondNeighborhood;
-    }    
 }
