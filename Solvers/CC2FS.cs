@@ -115,7 +115,7 @@ internal class CC2FS : ISolver {
         }
         SimpleSol bestSolution;
         {
-            ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjLstGraphFactory()),null);
+            ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
             bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
             
             foreach (int i in init.GetEnumerator()) {
@@ -158,7 +158,7 @@ internal class CC2FS : ISolver {
                 while(!CandidateSol.IsSolutionValid()) {
 
                     v = GetCCV2(); // CCV2={v|ConfChange[v] = 1, v /∈S}
-                    Console.WriteLine("Selecteed vertex: " + (v+1) + " SCORE: "+GetScore(v));
+                    //Console.WriteLine("Selecteed vertex: " + (v+1) + " SCORE: "+GetScore(v));
                     AddVertex(v);
 
                     forbidlist.Add(v);                    
@@ -178,7 +178,9 @@ internal class CC2FS : ISolver {
 
         var plt = new Plot();
         plt.Add.Scatter(ys, xs);
-        plt.SavePng("quickstart.png", 400, 300);
+        double itps = size_plot.Count / time_plot[time_plot.Count()-1];
+        plt.Add.Text(("Iterations: " + size_plot.Count() + ". It/s: " + itps), 10, 10);
+        plt.SavePng("quickstart.png", 1000, 700);
 
         return ret;
 

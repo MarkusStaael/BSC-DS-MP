@@ -15,7 +15,7 @@ using System.Xml.Linq;
 bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
-int target = 3;
+int target = 2;
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -29,8 +29,9 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjLstGraphFactory(), path);
 
-RunTest(new GreedyDecreaseKey(), graph, "Test 1: Basline", new AdjLstGraphFactory());
-RunTest(new CC2FS(), graph, "Test 2: CC2FS", new AdjLstGraphFactory());
+RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory());
+RunTest(new GreedyDecreaseKey(), graph, "Test 2: Optimized: GreedyDecreaseKey", new AdjSetLstGraphFactory());
+RunTest(new CC2FS(), graph, "Test 3: CC2FS", new AdjSetLstGraphFactory());
 
 
 void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
