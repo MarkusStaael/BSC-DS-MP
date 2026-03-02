@@ -283,7 +283,7 @@ internal class CC2FS : ISolver {
          * ConfChange[v] isset to 0, and for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
         ConfChange.Set(v, false);
-        foreach(int u in SecondNeighborhood(v)) {
+        foreach(int u in OpenTwoNeighborhood(v)) {
             ConfChange.Set(u, true);
         }
 
@@ -296,7 +296,7 @@ internal class CC2FS : ISolver {
         /**
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        foreach (int u in SecondNeighborhood(v)) {
+        foreach (int u in OpenTwoNeighborhood(v)) {
             ConfChange.Set(u, true);
         }
         // UPDATE IN SOL
@@ -304,13 +304,20 @@ internal class CC2FS : ISolver {
         //Console.WriteLine("Added vertex: " + v);
     }
 
-    private HashSet<int> SecondNeighborhood(int v) {
+    private IEnumerable<int> OpenTwoNeighborhood(int v) {
+        // THOSE EXACTLY 2 AWAY, EXCLUDING V AND NEIGHBORS OF V
+        HashSet<int> excluded = new HashSet<int>();
+        excluded.Add(v);
         HashSet<int> secondNeighborhood = new();
+
         foreach (int neighbor in graph.GetEdges(v)) {
-            foreach(int secondNeighbor in graph.GetEdges(neighbor)) {
+            excluded.Add(neighbor);
+            foreach (int secondNeighbor in graph.GetEdges(neighbor)) {
                 secondNeighborhood.Add(secondNeighbor);
             }
         }
+
+        secondNeighborhood.ExceptWith(excluded);
         return secondNeighborhood;
-    }    
+    } 
 }
