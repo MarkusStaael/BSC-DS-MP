@@ -13,7 +13,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace BSC_DS_MP.Solvers;
-
+// https://jair.org/index.php/jair/article/view/11044/26218
 internal class CC2FS : ISolver {
 
     // N2(v) = second level neighbors
@@ -183,8 +183,8 @@ internal class CC2FS : ISolver {
 
         var plt = new Plot();
         plt.Add.Scatter(ys, xs);
-        double itps = 60 * size_plot.Count / ((double) time_plot[time_plot.Count()-1]);
-        plt.Add.Text(("Iterations: " + size_plot.Count() + ". It/s: " + itps), 10, 10);
+        double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
+        plt.Title(("Iterations: " + size_plot.Count() + ". It/s: " + itps));
         plt.SavePng("quickstart.png", 1000, 700);
 
         return ret;
@@ -193,8 +193,9 @@ internal class CC2FS : ISolver {
 
     public void IncreaseFreq() {
         foreach(int v in graph.GetNodes()) {
-            //if (CandidateSol.SolutionContains(v)) continue;
-            if(CandidateSol.IsCovered(v)) continue;
+
+            if (CandidateSol.IsCovered(v)) continue;
+
             freq[v] += 1;
         }
     }
@@ -215,12 +216,12 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public int GetCCV2New() {
+    public int VertexInSWithHighestScoreWithForbid() {
         int highest = int.MinValue;
         int reference = -1;
-        int index = -1;
-        for(int i = 0; i < addCandidates.Count;i++) {
-            var score = GetScore(addCandidates[i]);
+        foreach (var node in CandidateSol.GetSolution()) {
+            if (forbidlist.Contains(node)) continue;
+            var score = GetScore(node);
             if (score > highest) {
                 highest = score;
                 reference = addCandidates[i];
@@ -247,20 +248,6 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public int VertexWithHighestScoreInS() { // NOTE: SEEMS EXPENSIVE
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in CandidateSol.GetSolution()) {
-            var score = GetScore(node);
-            if (score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
-    }
-
     public int GetScore(int u) {
         /**
          Definition 3For a graphG=  (V, E), and a candidate solutionS, the frequency based scoringfunction denoted byscoref, is a function such that
@@ -275,9 +262,10 @@ internal class CC2FS : ISolver {
                     sum += (int) freq[v];
                 }
             }
-            if (!CandidateSol.IsCovered(u)) { // REMEMBER TO INCLUDE YOURSELF
+            if(!CandidateSol.IsCovered(u)) {
                 sum += (int)freq[u];
             }
+
             return sum;
         } else {
             // CASE: u in S
@@ -288,7 +276,7 @@ internal class CC2FS : ISolver {
                     sum -= (int) freq[neigh];
                 }
             }
-            if (CandidateSol.Covered(u) == 1) { // REMEMBER TO INCLUDE YOURSELF
+            if (CandidateSol.Covered(u) == 1) {
                 sum -= (int)freq[u];
             }
             return sum;
@@ -300,11 +288,8 @@ internal class CC2FS : ISolver {
          * CC2 RULE 2: When removing a vertex v from the candidate solution S,
          * ConfChange[v] isset to 0, and for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        
-        foreach(int u in SecondNeighborhood(v)) {
-            //if (!ConfChange[u]) {
-            //    addCandidates.Add(u);
-            //}
+        ConfChange.Set(v, false);
+        foreach(int u in OpenTwoNeighborhood(v)) {
             ConfChange.Set(u, true);
         }
         ConfChange.Set(v, false); // UPDATE
@@ -318,10 +303,7 @@ internal class CC2FS : ISolver {
         /**
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        foreach (int u in SecondNeighborhood(v)) {
-            //if (!ConfChange[u]) {
-            //    addCandidates.Add(u);
-            //}
+        foreach (int u in OpenTwoNeighborhood(v)) {
             ConfChange.Set(u, true);
         }
         // UPDATE IN SOL
@@ -346,13 +328,20 @@ internal class CC2FS : ISolver {
         return secondNeighborhood;
     }
 
-    private HashSet<int> SecondNeighborhood(int v) {
+    private IEnumerable<int> OpenTwoNeighborhood(int v) {
+        // THOSE EXACTLY 2 AWAY, EXCLUDING V AND NEIGHBORS OF V
+        HashSet<int> excluded = new HashSet<int>();
+        excluded.Add(v);
         HashSet<int> secondNeighborhood = new();
+
         foreach (int neighbor in graph.GetEdges(v)) {
+            excluded.Add(neighbor);
             foreach (int secondNeighbor in graph.GetEdges(neighbor)) {
                 secondNeighborhood.Add(secondNeighbor);
             }
         }
+
+        secondNeighborhood.ExceptWith(excluded);
         return secondNeighborhood;
-    }
+    } 
 }
