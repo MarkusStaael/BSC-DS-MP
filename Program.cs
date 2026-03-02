@@ -5,6 +5,7 @@ using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
 using BSC_DS_MP.Verifier;
 using System.Collections;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Xml.Linq;
@@ -27,14 +28,14 @@ VerifierTest();
 
 // TESTS
 
-IGraph graph = Reader.DominatingSetReader(new AdjLstGraphFactory(), path);
+IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory());
-RunTest(new GreedyDecreaseKey(), graph, "Test 2: Optimized: GreedyDecreaseKey", new AdjSetLstGraphFactory());
-RunTest(new CC2FS(), graph, "Test 3: CC2FS", new AdjSetLstGraphFactory());
+RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(),false);
+RunTest(new GreedyDecreaseKey(), graph, "Test 2: Optimized: GreedyDecreaseKey", new AdjSetLstGraphFactory(),false);
+RunTest(new CC2FS(), graph, "Test 3: CC2FS", new AdjSetLstGraphFactory(),true);
 
 
-void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
+void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac, bool popup) {
     Console.WriteLine("---Starting test");
 
     IGraph clone = gr.CloneInto(fac);
@@ -75,6 +76,14 @@ void RunTest(ISolver solver,IGraph gr,string id,IGraphFactory fac) {
         foreach(int i in result.GetEnumerator()) {
             Console.Write((i + 1) + ", ");
         }
+    }
+    if(popup) {
+        string ppath = Path.Combine(AppContext.BaseDirectory, "quickstart.png");
+
+        Process.Start(new ProcessStartInfo {
+            FileName = ppath,
+            UseShellExecute = true
+        });
     }
     
     if (toFile) {

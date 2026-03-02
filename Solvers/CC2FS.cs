@@ -120,7 +120,7 @@ internal class CC2FS : ISolver {
         }
         SimpleSol bestSolution;
         {
-            ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
+            ISolution init = new GreedyLazyHeap().Solve(graph.CloneInto(new AdjSetLstGraphFactory()),null);
             bestSolution = new SimpleSol(graph);  //TODO: GREEDY CAN JUST RETURN A SOL
             
             foreach (int i in init.GetEnumerator()) {
@@ -194,7 +194,7 @@ internal class CC2FS : ISolver {
     public void IncreaseFreq() {
         foreach(int v in graph.GetNodes()) {
             //if (CandidateSol.SolutionContains(v)) continue;
-            if(CandidateSol.IsCovered(v)) continue; // Only increase freq of uncovered vertices
+            if(CandidateSol.IsCovered(v)) continue;
             freq[v] += 1;
         }
     }
@@ -301,10 +301,10 @@ internal class CC2FS : ISolver {
          * ConfChange[v] isset to 0, and for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
         
-        foreach(int u in OpenTwoNeighborhood(v)) {
-            if (!ConfChange[u]) {
-                addCandidates.Add(u);
-            }
+        foreach(int u in SecondNeighborhood(v)) {
+            //if (!ConfChange[u]) {
+            //    addCandidates.Add(u);
+            //}
             ConfChange.Set(u, true);
         }
         ConfChange.Set(v, false); // UPDATE
@@ -318,10 +318,10 @@ internal class CC2FS : ISolver {
         /**
          * CC2 RULE 3: CC2-RULE3.When adding a vertexvinto the candidate solutionS, for each vertexu∈N2(v),ConfChange[u]is set to 1.
          */
-        foreach (int u in OpenTwoNeighborhood(v)) {
-            if (!ConfChange[u]) {
-                addCandidates.Add(u);
-            }
+        foreach (int u in SecondNeighborhood(v)) {
+            //if (!ConfChange[u]) {
+            //    addCandidates.Add(u);
+            //}
             ConfChange.Set(u, true);
         }
         // UPDATE IN SOL
@@ -343,6 +343,16 @@ internal class CC2FS : ISolver {
         }
 
         secondNeighborhood.ExceptWith(excluded);
+        return secondNeighborhood;
+    }
+
+    private HashSet<int> SecondNeighborhood(int v) {
+        HashSet<int> secondNeighborhood = new();
+        foreach (int neighbor in graph.GetEdges(v)) {
+            foreach (int secondNeighbor in graph.GetEdges(neighbor)) {
+                secondNeighborhood.Add(secondNeighbor);
+            }
+        }
         return secondNeighborhood;
     }
 }
