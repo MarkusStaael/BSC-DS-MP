@@ -10,7 +10,7 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 20; // seconds
+int timelimit = 300; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -28,8 +28,8 @@ IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 RunTest(new GreedyDecreaseKey(), graph, "Test 1: GreedyDecreaseKey", new AdjSetLstGraphFactory(), false);
 //RunTest(new CC2FS(graph), graph, "Test 2: CC2Solver", new AdjSetLstGraphFactory(), false);
 RunTest(new SimAnneal(graph, timelimit), graph, "Test 2: Simulated Annealing", new AdjSetLstGraphFactory(), false);
-//RunTest(new SimAnneal(graph, timelimit), graph, "Test 3: Simulated Annealing", new AdjSetLstGraphFactory(), false);
-//RunTest(new SimAnneal(graph, timelimit), graph, "Test 4: Simulated Annealing", new AdjSetLstGraphFactory(), false);
+RunTest(new SimAnneal(graph, timelimit), graph, "Test 3: Simulated Annealing", new AdjSetLstGraphFactory(), false);
+RunTest(new SimAnneal(graph, timelimit), graph, "Test 4: Simulated Annealing", new AdjSetLstGraphFactory(), false);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
