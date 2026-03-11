@@ -5,6 +5,8 @@ using System.Threading;
 using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
+using ScottPlot;
+using System.Diagnostics;
 
 namespace BSC_DS_MP.Solvers;
 
@@ -129,7 +131,7 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
     int best = -1;
     int bestScore = -1;
 
-    for (int v = 0; v < n; v++)
+    for (int v = 0; v < n; v++) //maybe change to only consider vertices that are currently uncovered or have high dominated count, etc. instead of all vertices, to reduce runtime?
     {
         if (D.Contains(v)) continue;
         if (!confChange[v]) continue;
@@ -248,6 +250,11 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
 
         double T = initialT;
 
+        var size_plot = new List<int>();
+        var time_plot = new List<long>();
+
+        var sw = Stopwatch.StartNew();
+
         while (!token.IsCancellationRequested)
         {
             for (int i = 0; i < 500 && !token.IsCancellationRequested; i++) // moves before cooling. Maybe change to adaptive based on acceptance rate or time?
@@ -269,11 +276,23 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
 
                     if (nextCost < Cost(best, ComputeDominatedCount(best)))
                         best = new HashSet<int>(next);
-                }
+                }    
+
+                size_plot.Add(current.Count);
+                time_plot.Add(sw.ElapsedMilliseconds);
             }
 
             T *= alpha;
         }
+
+        int[] xs = size_plot.ToArray();
+        long[] ys = time_plot.ToArray();
+
+        var plt = new Plot();
+        plt.Add.Scatter(ys, xs);
+        double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
+        plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
+        plt.SavePng("quickstart.png", 1000, 700);
 
         return best;
     }
