@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
-internal class CC2FS : ISolver {
+internal class CC2FSHandmade : ISolver {
 
     // N2(v) = second level neighbors
     // N1(v) = first level neighbors
@@ -77,13 +77,10 @@ internal class CC2FS : ISolver {
                 }
             }
         }
-        public int GetSolutionCount() {
-            return vertices.Count;
-        }
         public bool IsSolutionValid() {
             return coveredSum == graph.getSize();
         }
-        public IEnumerable<int> GetEnumerator() {
+        public IEnumerable<int> GetSolution() {
             return vertices;
         }
         public bool SolutionContains(int v) {
@@ -100,7 +97,7 @@ internal class CC2FS : ISolver {
         }
         public SimpleSol Clone() {
             var ret = new SimpleSol(graph);
-            foreach (int i in GetEnumerator())
+            foreach (int i in vertices)
                 ret.AddVertex(i);
             return ret;
         }
@@ -121,12 +118,12 @@ internal class CC2FS : ISolver {
 
 
 
-    public CC2FS(IGraph graph) {
+    public CC2FSHandmade(IGraph graph) {
         this.graph = graph;
         forbidlist = new HashSet<int>();
         AddHeap = new(graph.getSize());
         RemoveHeap = new(graph.getSize());
-        InHeap = new(graph.getSize(), false);
+        InHeap = new(graph.getSize(),false);
 
     }
 
@@ -189,11 +186,11 @@ internal class CC2FS : ISolver {
         var sw = Stopwatch.StartNew();
 
         while (!((CancellationToken)token).IsCancellationRequested) {
-            size_plot.Add(CandidateSol.GetSolutionCount());
+            size_plot.Add(CandidateSol.GetSolution().Count());
             time_plot.Add(sw.ElapsedMilliseconds);
 
             if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolutionCount() < bestSolution.GetSolutionCount()) {
+                if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
                     bestSolution = CandidateSol.Clone();
                 }
                 // Line 5: remove vertex in S with highest score_f, ties broken by oldest
@@ -216,7 +213,7 @@ internal class CC2FS : ISolver {
         }
 
         var ret = new BitArraySolution(graph.getSize());
-        foreach (int i in bestSolution.GetEnumerator()) {
+        foreach (int i in bestSolution.GetSolution()) {
             ret.AddVertex(i);
         }
 
@@ -264,14 +261,14 @@ internal class CC2FS : ISolver {
 
     private void AddToAddHeap(int v) {
         InHeap[v] = true;
-        AddHeap.Insert(v, GetScore(v));
+        AddHeap.Insert(v,GetScore(v));
     }
 
-    public int VertexInSWithHighestScoreWithForbid() {
+    public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
-        foreach (var node in CandidateSol.GetEnumerator()) {
+        foreach (var node in CandidateSol.GetSolution()) {
             if (forbidlist.Contains(node)) continue;
             var score = GetScore(node);
             if (score > highest) {
@@ -285,7 +282,7 @@ internal class CC2FS : ISolver {
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
-        foreach (var node in CandidateSol.GetEnumerator()) {
+        foreach (var node in CandidateSol.GetSolution()) {
             var score = GetScore(node);
             if (score > highest) {
                 highest = score;
@@ -305,7 +302,7 @@ internal class CC2FS : ISolver {
     }
 
     private void SetCCTrue(int v) {
-        if (ConfChange[v] == false) {
+        if (ConfChange[v]==false) {
             AddHeap.Insert(v, GetScore(v));
         }
 
@@ -341,7 +338,7 @@ internal class CC2FS : ISolver {
             SetCCTrue(u);
         }
 
-
+        
         // UPDATE THE SCORES OF THE VERTICES TOUCHED
         foreach (int u in graph.GetEdges(v)) {
             if (!CandidateSol.IsCovered(v)) {
@@ -356,7 +353,7 @@ internal class CC2FS : ISolver {
     public void IncreaseFreq() {
         foreach (int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;
-
+            
         }
 
         foreach (int v in CandidateSol.uncoveredVertices) { // CAN HAVE REPEAT UPDATES
