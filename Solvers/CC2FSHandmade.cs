@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
-internal class CC2FS : ISolver {
+internal class CC2FSHandmade : ISolver {
 
     // N2(v) = second level neighbors
     // N1(v) = first level neighbors
@@ -118,12 +118,12 @@ internal class CC2FS : ISolver {
 
 
 
-    public CC2FS(IGraph graph) {
+    public CC2FSHandmade(IGraph graph) {
         this.graph = graph;
         forbidlist = new HashSet<int>();
         AddHeap = new(graph.getSize());
         RemoveHeap = new(graph.getSize());
-        InHeap = new(graph.getSize(), false);
+        InHeap = new(graph.getSize(),false);
 
     }
 
@@ -261,10 +261,10 @@ internal class CC2FS : ISolver {
 
     private void AddToAddHeap(int v) {
         InHeap[v] = true;
-        AddHeap.Insert(v, GetScore(v));
+        AddHeap.Insert(v,GetScore(v));
     }
 
-    public int VertexInSWithHighestScoreWithForbid() {
+    public int VertexInSWithHighestScoreWithForbid() { // NOTE: SEEMS EXPENSIVE
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
@@ -302,7 +302,7 @@ internal class CC2FS : ISolver {
     }
 
     private void SetCCTrue(int v) {
-        if (ConfChange[v] == false) {
+        if (ConfChange[v]==false) {
             AddHeap.Insert(v, GetScore(v));
         }
 
@@ -338,7 +338,7 @@ internal class CC2FS : ISolver {
             SetCCTrue(u);
         }
 
-
+        
         // UPDATE THE SCORES OF THE VERTICES TOUCHED
         foreach (int u in graph.GetEdges(v)) {
             if (!CandidateSol.IsCovered(v)) {
@@ -353,7 +353,7 @@ internal class CC2FS : ISolver {
     public void IncreaseFreq() {
         foreach (int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;
-
+            
         }
 
         foreach (int v in CandidateSol.uncoveredVertices) { // CAN HAVE REPEAT UPDATES
