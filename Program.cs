@@ -10,11 +10,7 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-<<<<<<< HEAD
 int timelimit = 300; // seconds
-=======
-int timelimit = 60; // seconds
->>>>>>> 6cf35db5073912c3e466897a2ebea28d215dbadf
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -28,10 +24,10 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-//RunTest(new GreedyLazyHeap(), graph, "Test 1: Baseline GreedyLazyHeap", new AdjSetLstGraphFactory(), false);
+RunTest(new GreedyDecreaseKey(), graph, "Test 1: Baseline GreedyDecreaseKey", new AdjSetLstGraphFactory(), false);
 //RunTest(new GreedyDecreaseKey(), graph, "Test 1: GreedyDecreaseKey", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FSHandmade(graph), graph, "Test: CC2Solver", new AdjSetLstGraphFactory(), true);
-//RunTest(new SimAnneal(graph, timelimit), graph, "Test 2: Simulated Annealing", new AdjSetLstGraphFactory(), false);
+//RunTest(new CC2FSHandmade(graph), graph, "Test: CC2Solver", new AdjSetLstGraphFactory(), true);
+RunTest(new SimAnneal(graph, timelimit), graph, "Test 2: Simulated Annealing", new AdjSetLstGraphFactory(), false);
 //RunTest(new SimAnneal(graph, timelimit), graph, "Test 3: Simulated Annealing", new AdjSetLstGraphFactory(), false);
 //RunTest(new SimAnneal(graph, timelimit), graph, "Test 4: Simulated Annealing", new AdjSetLstGraphFactory(), false);
 
