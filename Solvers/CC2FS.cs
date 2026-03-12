@@ -77,10 +77,13 @@ internal class CC2FS : ISolver {
                 }
             }
         }
+        public int GetSolutionCount() {
+            return vertices.Count;
+        }
         public bool IsSolutionValid() {
             return coveredSum == graph.getSize();
         }
-        public IEnumerable<int> GetSolution() {
+        public IEnumerable<int> GetEnumerator() {
             return vertices;
         }
         public bool SolutionContains(int v) {
@@ -97,7 +100,7 @@ internal class CC2FS : ISolver {
         }
         public SimpleSol Clone() {
             var ret = new SimpleSol(graph);
-            foreach (int i in vertices)
+            foreach (int i in GetEnumerator())
                 ret.AddVertex(i);
             return ret;
         }
@@ -186,11 +189,11 @@ internal class CC2FS : ISolver {
         var sw = Stopwatch.StartNew();
 
         while (!((CancellationToken)token).IsCancellationRequested) {
-            size_plot.Add(CandidateSol.GetSolution().Count());
+            size_plot.Add(CandidateSol.GetSolutionCount());
             time_plot.Add(sw.ElapsedMilliseconds);
 
             if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolution().Count() < bestSolution.GetSolution().Count()) {
+                if (CandidateSol.GetSolutionCount() < bestSolution.GetSolutionCount()) {
                     bestSolution = CandidateSol.Clone();
                 }
                 // Line 5: remove vertex in S with highest score_f, ties broken by oldest
@@ -213,7 +216,7 @@ internal class CC2FS : ISolver {
         }
 
         var ret = new BitArraySolution(graph.getSize());
-        foreach (int i in bestSolution.GetSolution()) {
+        foreach (int i in bestSolution.GetEnumerator()) {
             ret.AddVertex(i);
         }
 
@@ -268,7 +271,7 @@ internal class CC2FS : ISolver {
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
-        foreach (var node in CandidateSol.GetSolution()) {
+        foreach (var node in CandidateSol.GetEnumerator()) {
             if (forbidlist.Contains(node)) continue;
             var score = GetScore(node);
             if (score > highest) {
@@ -282,7 +285,7 @@ internal class CC2FS : ISolver {
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
-        foreach (var node in CandidateSol.GetSolution()) {
+        foreach (var node in CandidateSol.GetEnumerator()) {
             var score = GetScore(node);
             if (score > highest) {
                 highest = score;
