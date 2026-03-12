@@ -106,7 +106,8 @@ public class SimAnneal : ISolver
     }
 
     // cost of a solution is the size of D plus a large penalty for each undominated vertex. 
-    // Maybe smaller penalty factor?
+    // Maybe make the penalty proportional to the number of uncovered vertices instead of a fixed large number, so that we can have some intermediate solutions that are not fully dominating,
+    // but still better than others.
     private int Cost(int setSize, int undominated)
     {
         return setSize + undominated * n;
@@ -332,8 +333,8 @@ public class SimAnneal : ISolver
         plt.Add.Scatter(ys, xs); 
         double itps = size_plot.Count / 60.0 * time_plot[time_plot.Count - 1] / 1000.0; // iterations per second
         plt.Title("Iterations: " + size_plot.Count + ". It/s: " + itps); 
-        plt.SavePng("quickstart.png", 1000, 700);
-
+        plt.SavePng("SimulatedAnnealing.png", 1000, 700);
+        
         return best;
     }
 

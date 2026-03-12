@@ -207,7 +207,7 @@ internal class CC2FS_Claude : ISolver {
             plt.Add.Scatter(ys, xs);
             double itps = 60.0 * size_plot.Count / ((double)time_plot[time_plot.Count - 1]);
             plt.Title("Iterations: " + size_plot.Count + ". It/s: " + itps);
-            plt.SavePng("quickstart.png", 2000, 700);
+            plt.SavePng("Claude.png", 2000, 700);
         }
 
         return ret;
