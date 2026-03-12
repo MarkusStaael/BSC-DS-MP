@@ -197,9 +197,13 @@ internal class CC2FS : ISolver {
 
         var sw = Stopwatch.StartNew();
 
+        int iterCount = 0;
         while (!((CancellationToken)token).IsCancellationRequested) {
-            size_plot.Add(CandidateSol.GetSolutionCount());
-            time_plot.Add(sw.ElapsedMilliseconds);
+            if (iterCount % 10 == 0) {
+                size_plot.Add(CandidateSol.GetSolutionCount());
+                time_plot.Add(sw.ElapsedMilliseconds);
+            }
+            iterCount++;
 
             if (CandidateSol.IsSolutionValid()) {
                 if (CandidateSol.GetSolutionCount() < bestSolution.GetSolutionCount()) {

@@ -149,9 +149,13 @@ internal class CC2FS_Claude : ISolver {
 
         var sw = Stopwatch.StartNew();
 
+        int iterCount = 0;
         while (!((CancellationToken)token).IsCancellationRequested) {
-            size_plot.Add(solList.count);
-            time_plot.Add(sw.ElapsedMilliseconds);
+            if (iterCount % 10 == 0) {
+                size_plot.Add(solList.count);
+                time_plot.Add(sw.ElapsedMilliseconds);
+            }
+            iterCount++;
 
             if (coveredSum == n) {
                 // Valid solution
