@@ -55,6 +55,25 @@ namespace BSC_DS_MP.DataStructures.Heap
             return maxNode;
         }
 
+        public void Remove(int node)
+        {
+            int pos = _position[node];
+            if (pos == -1) return;
+            _position[node] = -1;
+            if (pos == _size)
+            {
+                _size--;
+                return;
+            }
+            _heap[pos] = _heap[_size];
+            _position[_heap[pos]] = pos;
+            _size--;
+            HeapifyUp(pos);
+            HeapifyDown(pos);
+        }
+
+        public bool Contains(int node) => _position[node] != -1;
+
         public void DecreaseKey(int node, int newKey)
         {
             int pos = _position[node];

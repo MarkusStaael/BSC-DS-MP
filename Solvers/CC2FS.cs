@@ -27,9 +27,6 @@ internal class CC2FS : ISolver {
             vertices = new HashSet<int>();
             coveredCount = new int[graph.getSize()];
             uncoveredVertices = new();
-            foreach (int node in graph.GetNodes()) {
-                coveredCount[node] = 0;
-            }
             this.graph = graph;
             coveredSum = 0;
         }
@@ -45,6 +42,8 @@ internal class CC2FS : ISolver {
             }
         }
         public void AddVertex(int v) {
+            if (vertices.Contains(v)) throw new Exception("DOUBLE ADD: vertex " + v + " already in solution, coveredCount=" + coveredCount[v]);
+
             vertices.Add(v);
             coveredCount[v] += 1;
             if (coveredCount[v] == 1) {
@@ -64,6 +63,7 @@ internal class CC2FS : ISolver {
             if (!vertices.Contains(v)) throw new Exception("Vertex not in solution");
             vertices.Remove(v);
             coveredCount[v] -= 1;
+            if (coveredCount[v] < 0) throw new Exception("NEGATIVE COVER: vertex " + v + " coveredCount=" + coveredCount[v]);
             if (coveredCount[v] == 0) {
                 coveredSum -= 1;
                 uncoveredVertices.Add(v);
@@ -71,6 +71,7 @@ internal class CC2FS : ISolver {
 
             foreach (int neighbor in graph.GetEdges(v)) {
                 coveredCount[neighbor] -= 1;
+                if (coveredCount[neighbor] < 0) throw new Exception("NEGATIVE COVER: neighbor " + neighbor + " of " + v + " coveredCount=" + coveredCount[neighbor]);
                 if (coveredCount[neighbor] == 0) {
                     coveredSum -= 1;
                     uncoveredVertices.Add(neighbor);
@@ -100,8 +101,12 @@ internal class CC2FS : ISolver {
         }
         public SimpleSol Clone() {
             var ret = new SimpleSol(graph);
-            foreach (int i in GetEnumerator())
-                ret.AddVertex(i);
+
+            ret.vertices = new HashSet<int>(vertices);
+            ret.uncoveredVertices = new HashSet<int>(uncoveredVertices);
+            ret.coveredSum = coveredSum;
+            ret.coveredCount = (int[])coveredCount.Clone();
+
             return ret;
         }
     }
@@ -118,6 +123,7 @@ internal class CC2FS : ISolver {
     IndexedMaxHeap AddHeap;
     IndexedMaxHeap RemoveHeap;
     BitArray InHeap;
+    BitArray InRemoveHeap;
 
 
 
@@ -127,6 +133,7 @@ internal class CC2FS : ISolver {
         AddHeap = new(graph.getSize());
         RemoveHeap = new(graph.getSize());
         InHeap = new(graph.getSize(), false);
+        InRemoveHeap = new(graph.getSize(), false);
 
     }
 
@@ -148,15 +155,17 @@ internal class CC2FS : ISolver {
                 TwoLevelNeighborhood[v] = new List<int>();
                 int stamp = currentMark++;
 
-                mark[v] = stamp;
-                foreach (int u in graph.GetEdges(v))
-                    mark[u] = stamp;
+                mark[v] = stamp; // exclude self only
 
                 foreach (int u in graph.GetEdges(v)) {
+                    if (mark[u] != stamp) {
+                        mark[u] = stamp;
+                        TwoLevelNeighborhood[v].Add(u); // N1(v)
+                    }
                     foreach (int w in graph.GetEdges(u)) {
                         if (mark[w] != stamp) {
                             mark[w] = stamp;
-                            TwoLevelNeighborhood[v].Add(w);
+                            TwoLevelNeighborhood[v].Add(w); // N2(v)
                         }
                     }
                 }
@@ -180,7 +189,7 @@ internal class CC2FS : ISolver {
         // Populate heaps from initial solution
         foreach (int v in graph.GetNodes()) {
             if (CandidateSol.SolutionContains(v)) {
-
+                AddToRemoveHeap(v);
             } else {
                 AddToAddHeap(v);
             }
@@ -196,17 +205,14 @@ internal class CC2FS : ISolver {
                 if (CandidateSol.GetSolutionCount() < bestSolution.GetSolutionCount()) {
                     bestSolution = CandidateSol.Clone();
                 }
-                // Line 5: remove vertex in S with highest score_f, ties broken by oldest
-                int v = VertexInSWithHighestScore();
+                int v = GetBestRemove(forbidList: false);
                 RemoveVertex(v);
             } else {
-                // Line 9: remove vertex in S with highest score_f not in forbid_list, ties broken by oldest
-                int v = VertexInSWithHighestScoreWithForbid();
+                int v = GetBestRemove(forbidList: true);
                 RemoveVertex(v);
                 forbidlist.Clear();
 
                 while (!CandidateSol.IsSolutionValid() && !((CancellationToken)token).IsCancellationRequested) {
-                    // Line 13: add vertex in CCV2 with highest score_f, ties broken by oldest
                     v = GetBestAdd();
                     AddVertex(v);
                     forbidlist.Add(v);
@@ -229,6 +235,22 @@ internal class CC2FS : ISolver {
         plt.SavePng("quickstart.png", 2000, 700);
 
         return ret;
+    }
+
+    public int ActualBest() {
+        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
+        int highest = int.MinValue;
+        int reference = -1;
+        foreach (var node in graph.GetNodes()) {
+            if (CandidateSol.SolutionContains(node)) continue;
+            if (ConfChange[node] == false) continue;
+            var score = GetScore(node);
+            if (score > highest) {
+                highest = score;
+                reference = node;
+            }
+        }
+        return reference;
     }
 
     public int GetScore(int u) {
@@ -256,10 +278,47 @@ internal class CC2FS : ISolver {
     }
 
     private int GetBestAdd() {
-        int target = AddHeap.RemoveMax();
-        InHeap[target] = false;
+        while (true) {
+            int target = AddHeap.RemoveMax();
+            InHeap[target] = false;
+            if (CandidateSol.SolutionContains(target)) continue;
+            if (!ConfChange[target]) continue;
+            //Console.WriteLine("ADD: " + target + "@ " + GetScore(target));
+            //if(target == 589020) {
+            //    //int best = ActualBest();
+            //    //Console.WriteLine(best + " @ " + GetScore(best));
+            //
+            //    //foreach (int neigh in graph.GetEdges(2)) {
+            //    //    Console.WriteLine("NEIGH: " + neigh + ". IS IN?: " + CandidateSol.SolutionContains(neigh) + " CC2: " + ConfChange[neigh]);
+            //    //}
+            //
+            //    //Console.WriteLine("BEEOP");
+            //}
 
-        return target;
+            return target;
+        }
+    }
+
+    private int GetBestRemove(bool forbidList) {
+
+        List<int> addAgainList = new List<int>();
+
+        while(true) {
+
+            int target = RemoveHeap.RemoveMax();
+
+            if (forbidList && forbidlist.Contains(target)) {
+                addAgainList.Add(target);
+            } else {
+                foreach(int u in addAgainList) {
+                    AddToRemoveHeap(u);
+                }
+                InRemoveHeap[target] = false;
+                //Console.WriteLine("REM: " + target + "@ "+GetScore(target));
+                return target; 
+
+            }
+        }
     }
 
     private void AddToAddHeap(int v) {
@@ -267,89 +326,103 @@ internal class CC2FS : ISolver {
         AddHeap.Insert(v, GetScore(v));
     }
 
-    public int VertexInSWithHighestScoreWithForbid() {
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in CandidateSol.GetEnumerator()) {
-            if (forbidlist.Contains(node)) continue;
-            var score = GetScore(node);
-            if (score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
-    }
-    public int VertexInSWithHighestScore() { // NOTE: SEEMS EXPENSIVE
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in CandidateSol.GetEnumerator()) {
-            var score = GetScore(node);
-            if (score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
+    private void AddToRemoveHeap(int v) {
+        InRemoveHeap[v] = true;
+        int score = GetScore(v);
+
+        //if (score < 0) Console.WriteLine("Added " + v + " to removeHeap @ " + score);
+
+        RemoveHeap.Insert(v, score);
     }
 
-    private void UpdateAddHeapElm(int v) {
+    private void UpdateHeapScores(int v) {
         if (InHeap[v]) {
             int newScore = GetScore(v);
             AddHeap.UpdateKey(v, newScore);
-            //Console.WriteLine("Updated " + v + " to " + newScore);
+            //if(newScore > 0)
+            //    Console.WriteLine("Updated " + v + " to " + newScore);
 
+        }
+        if (InRemoveHeap[v]) {
+
+            int newScore = GetScore(v);
+            RemoveHeap.UpdateKey(v, newScore);
+
+            //if (newScore > 0)
+            //    Console.WriteLine("Updated " + v + " to " + newScore);
         }
     }
 
     private void SetCCTrue(int v) {
         if (ConfChange[v] == false) {
-            AddHeap.Insert(v, GetScore(v));
+            ConfChange.Set(v, true);
+            if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
+                AddToAddHeap(v);
+            }
+            if (InRemoveHeap[v]) {
+                RemoveHeap.UpdateKey(v, GetScore(v));
+            }
         }
-
-        ConfChange.Set(v, true);
-
     }
 
     private void AddVertex(int v) {
-        //Console.WriteLine("Adding " + v);
         CandidateSol.AddVertex(v);
 
-        foreach (int u in TwoLevelNeighborhood[v]) {
+        foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
-        }
 
-        foreach (int u in graph.GetEdges(v)) { // CAN HAVE REPEAT UPDATES 
-            UpdateAddHeapElm(u);
-            if (CandidateSol.IsCovered(v)) {
-                foreach (int y in graph.GetEdges(u)) {
-                    UpdateAddHeapElm(y);
-                }
+        // Update v's direct neighbors and propagate on coverage transitions
+        foreach (int u in graph.GetEdges(v)) {
+            UpdateHeapScores(u);
+            if (CandidateSol.Covered(u) == 1) {           // 0→1: neighbors' add-scores decrease
+                foreach (int y in graph.GetEdges(u))
+                    UpdateHeapScores(y);
+            }
+            if (CandidateSol.Covered(u) == 2) {           // 1→2: adjacent solution vertices become more redundant
+                foreach (int y in graph.GetEdges(u))
+                    UpdateHeapScores(y);
             }
         }
+        // v itself: propagate on both transitions
+        if (CandidateSol.Covered(v) == 1 || CandidateSol.Covered(v) == 2) {
+            foreach (int y in graph.GetEdges(v))
+                UpdateHeapScores(y);
+        }
+
+        // Ensure v is out of AddHeap, then add to RemoveHeap
+        if (InHeap[v]) { AddHeap.Remove(v); InHeap[v] = false; }
+        AddToRemoveHeap(v);
     }
 
     private void RemoveVertex(int v) {
-        //Console.WriteLine("Removing " + v);
         CandidateSol.RemoveVertex(v);
-
         ConfChange.Set(v, false);
 
-        foreach (int u in TwoLevelNeighborhood[v]) {
+        foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
-        }
 
+        // Ensure v is out of RemoveHeap (usually already popped by GetBestRemove)
+        //if (InRemoveHeap[v]) { RemoveHeap.Remove(v); InRemoveHeap[v] = false; }
+        // v has CC=false so do NOT add to AddHeap (per paper's ConfChange rule)
 
-        // UPDATE THE SCORES OF THE VERTICES TOUCHED
+        // Update neighbors and propagate on coverage transitions
         foreach (int u in graph.GetEdges(v)) {
-            if (!CandidateSol.IsCovered(v)) {
-                foreach (int y in graph.GetEdges(u)) { // CAN HAVE REPEAT UPDATES 
-                    UpdateAddHeapElm(y);
-                }
+            UpdateHeapScores(u);
+            if (CandidateSol.Covered(u) == 0) {           // 1→0: neighbors' add-scores increase
+                foreach (int y in graph.GetEdges(u))
+                    UpdateHeapScores(y);
+            }
+            if (CandidateSol.Covered(u) == 1) {           // 2→1: adjacent solution vertices become less redundant
+                foreach (int y in graph.GetEdges(u))
+                    UpdateHeapScores(y);
             }
         }
+        // v itself: propagate on both transitions
+        //if (CandidateSol.Covered(v) == 0 || CandidateSol.Covered(v) == 1) {
+        //    UpdateHeapScores(v);
+        //    foreach (int y in graph.GetEdges(v))
+        //        UpdateHeapScores(y);
+        //}
     }
 
 
@@ -359,10 +432,10 @@ internal class CC2FS : ISolver {
 
         }
 
-        foreach (int v in CandidateSol.uncoveredVertices) { // CAN HAVE REPEAT UPDATES
-            UpdateAddHeapElm(v);
+        foreach (int v in CandidateSol.uncoveredVertices) {
+            UpdateHeapScores(v);
             foreach (int neigh in graph.GetEdges(v)) {
-                UpdateAddHeapElm(neigh);
+                UpdateHeapScores(neigh);
             }
         }
     }
