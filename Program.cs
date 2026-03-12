@@ -30,6 +30,7 @@ if(test == 0)
 else
     RunTest(new CC2FS(graph), graph, "Test: CC2Solver", new AdjSetLstGraphFactory(), true);
 
+
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
     Console.WriteLine("---Starting test");
 

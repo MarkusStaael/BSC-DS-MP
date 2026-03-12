@@ -19,6 +19,10 @@ public class SimAnneal : ISolver
 
     private bool[] confChange;
 
+    // Candidate frontier sets (instead of scanning whole graph)
+    private HashSet<int> candidateAdd = new();
+    private HashSet<int> candidateRemove = new();
+
     public SimAnneal(IGraph g, double timeLimitSeconds)
     {
         if(timeLimitSeconds <= 0)
@@ -26,11 +30,10 @@ public class SimAnneal : ISolver
 
         n = g.getSize();
         this.timeLimitSeconds = timeLimitSeconds;
+
         graph = new List<HashSet<int>>(n);
         for (int i = 0; i < n; i++)
-        {
             graph.Add(new HashSet<int>(g.GetEdges(i)));
-        }
     }
 
     //initial domination count for each vertex. Updated incrementally as vertices are added/removed from D.
@@ -48,131 +51,148 @@ public class SimAnneal : ISolver
         return dominated;
     }
 
-private void AddVertex(int v, HashSet<int> D, int[] dominated)
-{
-    if (!D.Add(v)) return;
+    private void UpdateNeighborhood(int v)
+    {
+        candidateAdd.Add(v);
+        candidateRemove.Add(v);
 
-    dominated[v]++;
-    foreach (var u in graph[v])
-        dominated[u]++;
+        foreach (var u in graph[v])
+        {
+            candidateAdd.Add(u);
+            candidateRemove.Add(u);
+        }
+    }
 
-    confChange[v] = true;
+    private void AddVertex(int v, HashSet<int> D, int[] dominated, ref int undominated)
+    {
+        if (!D.Add(v)) return;
 
-    foreach (var u in graph[v])
-        confChange[u] = true;
-}
+        if (dominated[v] == 0) undominated--;
+        dominated[v]++;
 
-private void RemoveVertex(int v, HashSet<int> D, int[] dominated)
-{
-    if (!D.Remove(v)) return;
+        foreach (var u in graph[v])
+        {
+            if (dominated[u] == 0) undominated--;
+            dominated[u]++;
+        }
 
-    dominated[v]--;
-    foreach (var u in graph[v])
-        dominated[u]--;
+        confChange[v] = true;
 
-    confChange[v] = false;
+        foreach (var u in graph[v])
+            confChange[u] = true;
 
-    foreach (var u in graph[v])
-        confChange[u] = true;
-}
+        UpdateNeighborhood(v);
+    }
+
+    private void RemoveVertex(int v, HashSet<int> D, int[] dominated, ref int undominated)
+    {
+        if (!D.Remove(v)) return;
+
+        dominated[v]--;
+        if (dominated[v] == 0) undominated++;
+
+        foreach (var u in graph[v])
+        {
+            dominated[u]--;
+            if (dominated[u] == 0) undominated++;
+        }
+
+        confChange[v] = false;
+
+        foreach (var u in graph[v])
+            confChange[u] = true;
+
+        UpdateNeighborhood(v);
+    }
 
     // cost of a solution is the size of D plus a large penalty for each undominated vertex. 
-    // Maybe make the penalty proportional to the number of uncovered vertices instead of a fixed large number, so that we can have some intermediate solutions that are not fully dominating,
-    // but still better than others.
-    private int Cost(HashSet<int> D, int[] dominated)
+    // Maybe smaller penalty factor?
+    private int Cost(int setSize, int undominated)
     {
-        int undominated = 0;
-
-        for (int i = 0; i < n; i++)
-            if (dominated[i] == 0)
-                undominated++;
-
-        return D.Count + undominated * n; // change cost scoring? 
+        return setSize + undominated * n;
     }
 
     /* 
         if v is dominated, score if added is 0. If v is not dominated, score if added is 1. 
         For each neighbor u of v, if u is not dominated, score if added increases by 1. 
-        
-        Note to self: 
-        Maybe consider score change instead of absolute score, so for example if v is already dominated but would become dominated by a different vertex in D, 
-        that would be a positive score change since it would allow us to remove the other vertex and potentially add another vertex that dominates more uncovered vertices. 
-
-        Would also need to change the remove scoring to consider this. Could also consider a more complex scoring function that takes into account the degree of the vertex and its neighbors, 
-        or the number of currently uncovered vertices it would cover, etc.
     */
     private int ScoreIfAdded(int v, int[] dominated)
     {
         int score = dominated[v] == 0 ? 1 : 0;
 
         foreach (var u in graph[v])
-            if (dominated[u] == 0) //change scoring eval to consider creating redundancy and allowing removal of other vertices in D.
+            if (dominated[u] == 0)
                 score++;
 
         return score;
     }
 
-    // score if removed is how many currently covered vertices would become uncovered, so we want to minimize this when picking a vertex to remove. 
-    // Note that this can be > 1 if the vertex dominates multiple vertices that are only dominated by it, or if it dominates a vertex that is also in D (which would become uncovered if this vertex is removed).
+    // score if removed is how many currently covered vertices would become uncovered
     private int ScoreIfRemoved(int v, int[] dominated)
     {
         int score = dominated[v] == 1 ? 1 : 0;
 
         foreach (var u in graph[v])
-            if (dominated[u] == 1) //change scoring eval to consider highly dominated vertices or dominating other vertices in D that would become uncovered, etc.
+            if (dominated[u] == 1)
                 score++;
 
         return score;
     }
 
-// Picks the vertex that would cover the most currently uncovered vertices, breaking ties with random choice. Skips currently in D and confChange true.
-private int PickBestAdd(HashSet<int> D, int[] dominated)
-{
-    int best = -1;
-    int bestScore = -1;
-
-    for (int v = 0; v < n; v++) //maybe change to only consider vertices that are currently uncovered or have high dominated count, etc. instead of all vertices, to reduce runtime?
+    // Picks the vertex that would cover the most currently uncovered vertices.
+    // Only scans the candidate neighborhood instead of the entire graph.
+    private int PickBestAdd(HashSet<int> D, int[] dominated)
     {
-        if (D.Contains(v)) continue;
-        if (!confChange[v]) continue;
+        int best = -1;
+        int bestScore = -1;
 
-        int score = ScoreIfAdded(v, dominated);
-
-        if (score > bestScore)
+        foreach (var v in candidateAdd)
         {
-            bestScore = score;
-            best = v;
+            if (D.Contains(v)) continue;
+            if (!confChange[v]) continue;
+
+            int score = ScoreIfAdded(v, dominated);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = v;
+            }
         }
+
+        if (best == -1)
+            best = rand.Next(n);
+
+        return best;
     }
 
-    if (best == -1)
-        best = rand.Next(n);
-
-    return best;
-}
-
-// Picks the vertex that would uncover the fewest currently covered vertices, breaking ties with random choice. Also considers currently in D and confChange true. Maybe change?
+    // Picks the vertex that would uncover the fewest currently covered vertices
     private int PickWorstRemove(HashSet<int> D, int[] dominated)
     {
         int worst = -1;
         int worstScore = int.MaxValue;
 
-        foreach (var v in D)
+        foreach (var v in candidateRemove)
         {
+            if (!D.Contains(v)) continue;
+
             int score = ScoreIfRemoved(v, dominated);
 
-            if (score < worstScore) //maybe change to best 
+            if (score < worstScore)
             {
                 worstScore = score;
                 worst = v;
             }
         }
 
+        if (worst == -1 && D.Count > 0)
+            worst = D.ElementAt(rand.Next(D.Count));
+
         return worst;
     }
 
-    // After a move, check if any vertices in D are redundant (dominated count > 1), and if so remove them. Change to only check the affected vertices and their neighbors instead of all of D?
-    private void RemoveRedundant(HashSet<int> D, int[] dominated)
+    // After a move, check if any vertices in D are redundant
+    private void RemoveRedundant(HashSet<int> D, int[] dominated, ref int undominated)
     {
         var vertices = D.ToList();
 
@@ -193,39 +213,38 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
             }
 
             if (redundant)
-                RemoveVertex(v, D, dominated);
+                RemoveVertex(v, D, dominated, ref undominated);
         }
     }
 
-    //Random move types: add a vertex, remove a vertex, or swap (remove worst, then add best + 1 random).
-    //probabilities: 10%, 60%, 30%. After the move, remove any redundant vertices.
-    private void RandomMove(HashSet<int> D, int[] dominated)
+    //Random move types: add a vertex, remove a vertex, or swap. Currently add focused.  
+    private void RandomMove(HashSet<int> D, int[] dominated, ref int undominated)
     {
         int move = rand.Next(10);
 
         if (move < 1 && D.Count > 0)
         {
             int remove = PickWorstRemove(D, dominated);
-            RemoveVertex(remove, D, dominated);
+            RemoveVertex(remove, D, dominated, ref undominated);
         }
         else if (move < 7)
         {
             int add = PickBestAdd(D, dominated);
-            AddVertex(add, D, dominated);
+            AddVertex(add, D, dominated, ref undominated);
         }
         else
         {
             int remove = PickWorstRemove(D, dominated);
-            RemoveVertex(remove, D, dominated);
+            RemoveVertex(remove, D, dominated, ref undominated);
 
             int v = PickBestAdd(D, dominated);
-            AddVertex(v, D, dominated);
+            AddVertex(v, D, dominated, ref undominated);
 
             int w = rand.Next(n);
-            AddVertex(w, D, dominated);
+            AddVertex(w, D, dominated, ref undominated);
         }
 
-        RemoveRedundant(D, dominated);
+        RemoveRedundant(D, dominated, ref undominated);
     }
 
     public HashSet<int> Optimize(HashSet<int> greedy, CancellationToken token)
@@ -235,63 +254,84 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
 
         int[] dominated = ComputeDominatedCount(current);
 
+        int undominated = dominated.Count(x => x == 0);
+
         confChange = new bool[n];
         Array.Fill(confChange, true);
 
-        double initialT = n;
-        double finalT = 0.01 * (60.0 / timeLimitSeconds);  // adjust time limit scaling. Maybe reheating schedule instead of exponential cooling?
+        // initialize candidate frontier around greedy solution
+        foreach (var v in greedy)
+        {
+            candidateRemove.Add(v);
 
-        //maybe remove estimate and just use a fixed alpha or adaptive alpha 
-        double movesPerSecond = 500.0;  // Reduced estimate 
-        double innerPerOuter = 500.0;
-        double outerPerSecond = movesPerSecond / innerPerOuter;
+            foreach (var u in graph[v])
+                candidateAdd.Add(u);
+        }
+
+
+        //Temperature schedule parameters:
+        double initialT = n;
+        double finalT = 0.01 * (60.0 / timeLimitSeconds);
+
+        double movesPerSecond = 20000.0;
+        double opsPerT = 500.0;
+        double outerPerSecond = movesPerSecond / opsPerT;
         double numOuter = timeLimitSeconds * outerPerSecond;
+
         double alpha = Math.Pow(finalT / initialT, 1.0 / numOuter);
 
         double T = initialT;
 
+        //for plotting
         var size_plot = new List<int>();
         var time_plot = new List<long>();
-
         var sw = Stopwatch.StartNew();
+
 
         while (!token.IsCancellationRequested)
         {
-            for (int i = 0; i < 500 && !token.IsCancellationRequested; i++) // moves before cooling. Maybe change to adaptive based on acceptance rate or time?
+            for (int i = 0; i < opsPerT && !token.IsCancellationRequested; i++) // inner loop: perform moves at current temperature.
             {
-                var next = new HashSet<int>(current);
-                var nextDom = (int[])dominated.Clone();
+                int oldCost = Cost(current.Count, undominated);
 
-                RandomMove(next, nextDom);
+                // record move snapshot
+                var snapshot = new HashSet<int>(current);
+                var domSnapshot = (int[])dominated.Clone();
+                int undSnapshot = undominated;
 
-                int currentCost = Cost(current, dominated);
-                int nextCost = Cost(next, nextDom);
+                RandomMove(current, dominated, ref undominated);
 
-                int delta = nextCost - currentCost;
+                int newCost = Cost(current.Count, undominated);
 
-                if (delta <= 0 || rand.NextDouble() < Math.Exp(-delta / T))
+                int delta = newCost - oldCost;
+
+                if (delta > 0 && rand.NextDouble() >= Math.Exp(-delta / T))
                 {
-                    current = next;
-                    dominated = nextDom;
-
-                    if (nextCost < Cost(best, ComputeDominatedCount(best)))
-                        best = new HashSet<int>(next);
-                }    
+                    current = snapshot;
+                    dominated = domSnapshot;
+                    undominated = undSnapshot;
+                }
+                else
+                {
+                    if (newCost < Cost(best.Count, ComputeDominatedCount(best).Count(x => x == 0)))
+                        best = new HashSet<int>(current);
+                }
 
                 size_plot.Add(current.Count);
                 time_plot.Add(sw.ElapsedMilliseconds);
+
             }
 
             T *= alpha;
         }
 
-        int[] xs = size_plot.ToArray();
-        long[] ys = time_plot.ToArray();
+        int[] xs = size_plot.ToArray(); 
+        long[] ys = time_plot.ToArray(); 
 
-        var plt = new Plot();
-        plt.Add.Scatter(ys, xs);
-        double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-        plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
+        var plt = new Plot(); 
+        plt.Add.Scatter(ys, xs); 
+        double itps = size_plot.Count / 60.0 * time_plot[time_plot.Count - 1] / 1000.0; // iterations per second
+        plt.Title("Iterations: " + size_plot.Count + ". It/s: " + itps); 
         plt.SavePng("quickstart.png", 1000, 700);
 
         return best;
@@ -304,16 +344,13 @@ private int PickBestAdd(HashSet<int> D, int[] dominated)
         var greedySol = greedySolver.Solve(graph, token);
         var initial = new HashSet<int>(greedySol.GetEnumerator());
 
-        // Handle cancellation token - assume it's time-based if provided
         CancellationToken ct = token ?? CancellationToken.None;
 
         var optimized = Optimize(initial, ct);
 
         var result = new HashSetSolution(graph.getSize());
         foreach (var v in optimized)
-        {
             result.AddVertex(v);
-        }
 
         return result;
     }
