@@ -425,7 +425,6 @@ internal class CC2FS : ISolver {
         //}
     }
 
-
     public void IncreaseFreq() {
         foreach (int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;

@@ -24,11 +24,7 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-int test = 1;
-if(test == 0)
-    RunTest(new CC2FSHandmade(graph), graph, "Test: CC2Solver", new AdjSetLstGraphFactory(), true);
-else
-    RunTest(new CC2FS(graph), graph, "Test: CC2Solver", new AdjSetLstGraphFactory(), true);
+RunTest(new CC2FS_Claude(graph), graph, "Test: CC2FS_Claude", new AdjSetLstGraphFactory(), true);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
