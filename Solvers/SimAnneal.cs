@@ -331,7 +331,7 @@ public class SimAnneal : ISolver
 
         var plt = new Plot(); 
         plt.Add.Scatter(ys, xs); 
-        double itps = size_plot.Count / 60.0 * time_plot[time_plot.Count - 1] / 1000.0; // iterations per second
+        double itps = size_plot.Count / (time_plot[time_plot.Count - 1] / 1000.0); // iterations per second
         plt.Title("Iterations: " + size_plot.Count + ". It/s: " + itps); 
         plt.SavePng("SimulatedAnnealing.png", 1000, 700);
         
