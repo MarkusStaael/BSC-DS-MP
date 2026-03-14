@@ -10,7 +10,7 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 10; // seconds
+int timelimit = 30; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -22,11 +22,23 @@ VerifierTest();
 
 // TESTS
 
-IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
+IGraph graph = Reader.DominatingSetReader(new FlatCsrGraphFactory(), path);
 
-RunTest(new GreedyDecreaseKey(), graph, "Test: Greedy baseline", new AdjSetLstGraphFactory(), false);
-RunTest(new SimAnneal(graph, timelimit), graph, "Test: Simulated Annealing", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FS_Claude(graph), graph, "Test: CC2FS_Claude", new AdjSetLstGraphFactory(), false);
+// --- Graph reduction preprocessing ---
+var reducerSw = Stopwatch.StartNew();
+var reducer = new GraphReducer(graph);
+reducerSw.Stop();
+Console.WriteLine($"Reduction: {reducer.OriginalSize} -> {reducer.ReducedSize} vertices " +
+    $"({reducer.ForcedVertices.Length} forced, {reducer.OriginalSize - reducer.ReducedSize - reducer.ForcedVertices.Length} dominated) " +
+    $"in {reducerSw.ElapsedMilliseconds}ms");
+
+IGraph reduced = reducer.ReducedGraph;
+
+// --- Run solvers ---
+RunTest(new GreedyDecreaseKey(), graph, "Greedy (original)", new FlatCsrGraphFactory(), false);
+RunReducedTest(new GreedyDecreaseKey(), reduced, graph, reducer, "Greedy (reduced)");
+RunTest(new CC2FS_ClaudeV2(graph), graph, "CC2FS_V2 (original)", new FlatCsrGraphFactory(), false);
+RunTest(new CC2FS_Claude(graph), graph, "CC2FS (original)", new FlatCsrGraphFactory(), false);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
@@ -101,6 +113,37 @@ void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup
 
 
 
+
+void RunReducedTest(ISolver solver, IGraph reducedGraph, IGraph originalGraph, GraphReducer reducer, string id) {
+    Console.WriteLine("---Starting test");
+
+    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
+    CancellationToken token = cts.Token;
+
+    var ts = DateTime.Now;
+    ISolution reducedResult = solver.Solve(reducedGraph, token);
+    var dt = (DateTime.Now - ts);
+
+    // Map back to original graph and combine with forced vertices
+    ISolution fullResult = reducer.MapBack(reducedResult, originalGraph.getSize());
+
+    bool passed = Verifier.Verify(fullResult, originalGraph);
+    Console.WriteLine("Test \"" + id + "\" Delta time: " + dt.ToString() + "s . Resulting set size: " + fullResult.Count() +
+        " (forced: " + reducer.ForcedVertices.Length + " + solver: " + reducedResult.Count() + ") RESULT ACCEPTED?: " + passed);
+
+    if (!passed) {
+        var coveredSet = new HashSet<int>();
+        foreach (int node in fullResult.GetEnumerator()) {
+            coveredSet.Add(node);
+            foreach (int nbr in originalGraph.GetEdges(node)) coveredSet.Add(nbr);
+        }
+        var missing = new List<int>();
+        for (int v = 0; v < originalGraph.getSize(); v++) {
+            if (!coveredSet.Contains(v)) missing.Add(v);
+        }
+        Console.WriteLine("Uncovered: " + missing.Count + " nodes. First 20: " + string.Join(",", missing.Take(20)));
+    }
+}
 
 void VerifierTest() {
     IGraph gr = new AdjSetLstGraph(3);

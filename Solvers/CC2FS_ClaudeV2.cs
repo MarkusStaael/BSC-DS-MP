@@ -1,22 +1,24 @@
 using BSC_DS_MP.DataStructures.Graph;
+using BSC_DS_MP.DataStructures.Heap;
 using BSC_DS_MP.Util;
 using ScottPlot;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace BSC_DS_MP.Solvers;
 
 /// <summary>
-/// CC2FS with incremental scoring, BMS selection, timestamp tiebreaking,
-/// CSR graph, bool[] ConfChange, frequency smoothing, and stagnation perturbation.
+/// CC2FS V2: Same core loop as V1 but with progressive perturbation
+/// (escalating disruption on stagnation) and randomized restarts with
+/// history-based diversity penalties.
 /// </summary>
-internal class CC2FS_Claude : ISolver {
+internal class CC2FS_ClaudeV2 : ISolver {
 
-    // --- Swap-remove indexed list for O(1) random access + contains ---
     struct SwapList {
         public int[] items;
-        public int[] position; // position[v] = index in items, or -1
+        public int[] position;
         public int count;
 
         public SwapList(int capacity) {
@@ -27,7 +29,7 @@ internal class CC2FS_Claude : ISolver {
         }
 
         public void Add(int v) {
-            if (position[v] != -1) return; // already present
+            if (position[v] != -1) return;
             position[v] = count;
             items[count] = v;
             count++;
@@ -35,7 +37,7 @@ internal class CC2FS_Claude : ISolver {
 
         public void Remove(int v) {
             int pos = position[v];
-            if (pos == -1) return; // not present
+            if (pos == -1) return;
             count--;
             int last = items[count];
             items[pos] = last;
@@ -44,53 +46,50 @@ internal class CC2FS_Claude : ISolver {
         }
 
         public bool Contains(int v) => position[v] != -1;
-
         public int RandomElement(Random rng) => items[rng.Next(count)];
     }
 
-    // --- Solution state (replaces SimpleSol with swap-remove lists) ---
     int n;
     SwapList solList;
     SwapList uncovList;
     int[] coveredCount;
     int coveredSum;
 
-    // --- Incremental scoring ---
     int[] score;
     int[] freq;
     int[] timestamp;
     int stepCounter;
 
-    // --- Configuration checking ---
     bool[] confChange;
 
-    // --- Graph ---
     CsrGraph csr;
     CsrTwoLevel twoLevel;
     IGraph originalGraph;
 
-    // --- BMS ---
     const int BMS_K = 50;
     Random rng;
 
-    // --- Forbid list (bool[] instead of HashSet for zero-hash O(1)) ---
+    // --- Forbid list (same as V1) ---
     bool[] forbid;
     int[] forbidBuf;
     int forbidCount;
 
-    // --- Stagnation detection ---
+    // --- Stagnation / progressive perturbation ---
     int stepsSinceImprovement;
-    const int STAGNATION_THRESHOLD = 100000;
+    int perturbLevel;
+    static readonly int[] STAGNATION_THRESHOLDS = { 100_000, 300_000, 700_000, 1_500_000 };
 
-    // --- Frequency smoothing ---
-    const int SMOOTH_INTERVAL = 100000;
+    const int SMOOTH_INTERVAL = 100_000;
     int smoothCounter;
 
-    // --- Configuration ---
+    // --- Restart history ---
+    int[] vertexAppearCount;
+    int restartCount;
+
     private readonly bool useOneLevelCC;
     private readonly string plotFile;
 
-    public CC2FS_Claude(IGraph graph, int seed = 42, bool useOneLevelCC = false, string plotFile = "Claude.png") {
+    public CC2FS_ClaudeV2(IGraph graph, int seed = 42, bool useOneLevelCC = false, string plotFile = "ClaudeV2.png") {
         this.originalGraph = graph;
         this.n = graph.getSize();
         forbid = new bool[graph.getSize()];
@@ -101,17 +100,15 @@ internal class CC2FS_Claude : ISolver {
     }
 
     public ISolution Solve(IGraph graph, CancellationToken? token) {
-        if (token == null) throw new Exception("CC2FS_Claude needs a CancellationToken");
+        if (token == null) throw new Exception("CC2FS_ClaudeV2 needs a CancellationToken");
 
         var size_plot = new List<int>(1024 * 64);
         var time_plot = new List<long>(1024 * 64);
 
-        // --- Phase 4: Build CSR graph ---
         csr = new CsrGraph(graph);
         if (!useOneLevelCC)
             twoLevel = new CsrTwoLevel(graph, csr);
 
-        // --- Initialize state ---
         n = csr.NodeCount;
         solList = new SwapList(n);
         uncovList = new SwapList(n);
@@ -119,7 +116,7 @@ internal class CC2FS_Claude : ISolver {
         coveredSum = 0;
 
         confChange = new bool[n];
-        Array.Fill(confChange, true); // CC2-R1
+        Array.Fill(confChange, true);
 
         freq = new int[n];
         Array.Fill(freq, 1);
@@ -129,28 +126,24 @@ internal class CC2FS_Claude : ISolver {
         stepCounter = 0;
         smoothCounter = 0;
         stepsSinceImprovement = 0;
+        perturbLevel = 0;
 
-        // --- Get initial greedy solution ---
-        // B3: GreedyDecreaseKey is read-only, no clone needed
+        vertexAppearCount = new int[n];
+        restartCount = 0;
+
         ISolution init = new GreedyDecreaseKey().Solve(graph, null);
-
-        // Add initial solution vertices
         foreach (int v in init.GetEnumerator()) {
             SolAddVertex(v);
         }
-        // Mark uncovered vertices
         for (int v = 0; v < n; v++) {
-            if (coveredCount[v] == 0) {
+            if (coveredCount[v] == 0)
                 uncovList.Add(v);
-            }
         }
 
-        // --- Phase 1: Initialize score array from scratch ---
         for (int v = 0; v < n; v++) {
             score[v] = ComputeScoreFromScratch(v);
         }
 
-        // Clone best solution
         int bestCount = solList.count;
         int[] bestSolVertices = new int[solList.count];
         Array.Copy(solList.items, bestSolVertices, solList.count);
@@ -166,16 +159,20 @@ internal class CC2FS_Claude : ISolver {
             iterCount++;
 
             if (coveredSum == n) {
-                // Valid solution
                 if (solList.count < bestCount) {
                     bestCount = solList.count;
                     bestSolVertices = new int[solList.count];
                     Array.Copy(solList.items, bestSolVertices, solList.count);
                     stepsSinceImprovement = 0;
+                    perturbLevel = 0;
+
+                    for (int i = 0; i < solList.count; i++)
+                        vertexAppearCount[solList.items[i]]++;
                 }
                 int v = GetBestRemoveBMS(useForbidList: false);
                 RemoveVertex(v);
             } else {
+                // Same forbid-based repair loop as V1
                 int v = GetBestRemoveBMS(useForbidList: true);
                 RemoveVertex(v);
                 forbidCount = 0;
@@ -188,105 +185,86 @@ internal class CC2FS_Claude : ISolver {
                     IncreaseFreq();
                 }
 
-                // Clear forbid flags
                 for (int i = 0; i < forbidCount; i++) forbid[forbidBuf[i]] = false;
             }
 
             stepsSinceImprovement++;
 
-            // --- Phase 5: Perturbation on stagnation ---
-            if (stepsSinceImprovement > STAGNATION_THRESHOLD && solList.count > 0) {
-                Perturb();
-                stepsSinceImprovement = 0;
+            // Progressive perturbation (V2 improvement over V1's fixed perturbation)
+            if (perturbLevel < STAGNATION_THRESHOLDS.Length &&
+                stepsSinceImprovement > STAGNATION_THRESHOLDS[perturbLevel] &&
+                solList.count > 0) {
+                if (perturbLevel < 3) {
+                    Perturb(perturbLevel + 1);
+                    perturbLevel++;
+                    stepsSinceImprovement = 0;
+                } else {
+                    TriggerRestart(graph);
+                    perturbLevel = 0;
+                    stepsSinceImprovement = 0;
+                }
             }
         }
 
-        // Build return solution
+        Console.WriteLine($"[V2 Stats] OuterIter: {iterCount}, Restarts: {restartCount}");
+
         var ret = new BitArraySolution(n);
         for (int i = 0; i < bestSolVertices.Length; i++) {
             ret.AddVertex(bestSolVertices[i]);
         }
 
-        // Plot
         if (size_plot.Count > 0) {
             long[] ys = time_plot.ToArray();
             int[] xs = size_plot.ToArray();
             var plt = new Plot();
             plt.Add.Scatter(ys, xs);
             double itps = 60.0 * size_plot.Count / ((double)time_plot[time_plot.Count - 1]);
-            plt.Title("Iterations: " + size_plot.Count + ". It/s: " + itps);
+            plt.Title("V2 Iterations: " + size_plot.Count + ". It/s: " + itps);
             plt.SavePng(plotFile, 2000, 700);
         }
 
         return ret;
     }
 
-    // --- Low-level solution manipulation (no score updates) ---
+    // --- V1-identical core methods ---
+
     private void SolAddVertex(int v) {
         solList.Add(v);
         coveredCount[v]++;
-        if (coveredCount[v] == 1) {
-            coveredSum++;
-            uncovList.Remove(v);
-        }
+        if (coveredCount[v] == 1) { coveredSum++; uncovList.Remove(v); }
         var neighbors = csr.GetNeighbors(v);
         for (int i = 0; i < neighbors.Length; i++) {
             int u = neighbors[i];
             coveredCount[u]++;
-            if (coveredCount[u] == 1) {
-                coveredSum++;
-                uncovList.Remove(u);
-            }
+            if (coveredCount[u] == 1) { coveredSum++; uncovList.Remove(u); }
         }
     }
 
     private void SolRemoveVertex(int v) {
         solList.Remove(v);
         coveredCount[v]--;
-        if (coveredCount[v] == 0) {
-            coveredSum--;
-            uncovList.Add(v);
-        }
+        if (coveredCount[v] == 0) { coveredSum--; uncovList.Add(v); }
         var neighbors = csr.GetNeighbors(v);
         for (int i = 0; i < neighbors.Length; i++) {
             int u = neighbors[i];
             coveredCount[u]--;
-            if (coveredCount[u] == 0) {
-                coveredSum--;
-                uncovList.Add(u);
-            }
+            if (coveredCount[u] == 0) { coveredSum--; uncovList.Add(u); }
         }
     }
 
-    // --- Phase 1: Incremental score maintenance ---
-
     private void AddVertex(int v) {
-        // Capture transitions: coveredCount will increase for v and N(v)
-        // We need to check before and after for each affected vertex
-
-        // Before add: snapshot transitions for v and neighbors
         var neighbors = csr.GetNeighbors(v);
-
-        // Apply the add
         SolAddVertex(v);
-
-        // Phase 3: timestamp
         timestamp[v] = stepCounter++;
 
-        // Delta updates for v itself
-        // coveredCount[v] just increased
         int ccV = coveredCount[v];
         if (ccV == 1) {
-            // 0→1: v became covered
-            // All non-solution neighbors of v lose freq[v] from their add-score
             for (int i = 0; i < neighbors.Length; i++) {
                 int w = neighbors[i];
                 if (!solList.Contains(w)) score[w] -= freq[v];
             }
-            if (!solList.Contains(v)) score[v] -= freq[v]; // v is in solution now, but logically...
+            if (!solList.Contains(v)) score[v] -= freq[v];
         } else if (ccV == 2) {
-            // 1→2: v became doubly covered
-            // Solution neighbors of v: their remove cost increases (less negative = better to remove)
             for (int i = 0; i < neighbors.Length; i++) {
                 int w = neighbors[i];
                 if (solList.Contains(w)) score[w] += freq[v];
@@ -294,12 +272,10 @@ internal class CC2FS_Claude : ISolver {
             if (solList.Contains(v)) score[v] += freq[v];
         }
 
-        // Delta updates for each neighbor u of v
         for (int i = 0; i < neighbors.Length; i++) {
             int u = neighbors[i];
             int ccU = coveredCount[u];
             if (ccU == 1) {
-                // 0→1: u became covered
                 var uNeighbors = csr.GetNeighbors(u);
                 for (int j = 0; j < uNeighbors.Length; j++) {
                     int w = uNeighbors[j];
@@ -307,7 +283,6 @@ internal class CC2FS_Claude : ISolver {
                 }
                 if (!solList.Contains(u)) score[u] -= freq[u];
             } else if (ccU == 2) {
-                // 1→2: u became doubly covered
                 var uNeighbors = csr.GetNeighbors(u);
                 for (int j = 0; j < uNeighbors.Length; j++) {
                     int w = uNeighbors[j];
@@ -317,10 +292,8 @@ internal class CC2FS_Claude : ISolver {
             }
         }
 
-        // v switched roles: recompute its score directly
         score[v] = ComputeScoreFromScratch(v);
 
-        // CC updates: set ConfChange true for neighborhood
         if (useOneLevelCC) {
             for (int i = 0; i < neighbors.Length; i++)
                 confChange[neighbors[i]] = true;
@@ -337,22 +310,17 @@ internal class CC2FS_Claude : ISolver {
 
     private void RemoveVertex(int v) {
         var neighbors = csr.GetNeighbors(v);
-
-        // Apply the remove
         SolRemoveVertex(v);
-        confChange[v] = false; // CC2 rule
+        confChange[v] = false;
 
-        // Delta updates for v itself
         int ccV = coveredCount[v];
         if (ccV == 0) {
-            // 1→0: v became uncovered
             for (int i = 0; i < neighbors.Length; i++) {
                 int w = neighbors[i];
                 if (!solList.Contains(w)) score[w] += freq[v];
             }
             if (!solList.Contains(v)) score[v] += freq[v];
         } else if (ccV == 1) {
-            // 2→1: v became singly covered
             for (int i = 0; i < neighbors.Length; i++) {
                 int w = neighbors[i];
                 if (solList.Contains(w)) score[w] -= freq[v];
@@ -360,12 +328,10 @@ internal class CC2FS_Claude : ISolver {
             if (solList.Contains(v)) score[v] -= freq[v];
         }
 
-        // Delta updates for each neighbor u of v
         for (int i = 0; i < neighbors.Length; i++) {
             int u = neighbors[i];
             int ccU = coveredCount[u];
             if (ccU == 0) {
-                // 1→0: u became uncovered
                 var uNeighbors = csr.GetNeighbors(u);
                 for (int j = 0; j < uNeighbors.Length; j++) {
                     int w = uNeighbors[j];
@@ -373,7 +339,6 @@ internal class CC2FS_Claude : ISolver {
                 }
                 if (!solList.Contains(u)) score[u] += freq[u];
             } else if (ccU == 1) {
-                // 2→1: u became singly covered
                 var uNeighbors = csr.GetNeighbors(u);
                 for (int j = 0; j < uNeighbors.Length; j++) {
                     int w = uNeighbors[j];
@@ -383,10 +348,8 @@ internal class CC2FS_Claude : ISolver {
             }
         }
 
-        // v switched roles: recompute its score directly
         score[v] = ComputeScoreFromScratch(v);
 
-        // CC updates: set ConfChange true for neighborhood
         if (useOneLevelCC) {
             for (int i = 0; i < neighbors.Length; i++)
                 confChange[neighbors[i]] = true;
@@ -401,8 +364,6 @@ internal class CC2FS_Claude : ISolver {
 #endif
     }
 
-    // --- Phase 2: BMS selection ---
-
     private int GetBestAddBMS() {
         int bestVertex = -1;
         int bestScore = int.MinValue;
@@ -410,63 +371,47 @@ internal class CC2FS_Claude : ISolver {
 
         for (int sample = 0; sample < BMS_K; sample++) {
             if (uncovList.count == 0) break;
-
-            // Pick a random uncovered vertex, consider it and its neighbors
             int uncov = uncovList.RandomElement(rng);
 
-            // Check uncov itself
             if (!solList.Contains(uncov) && confChange[uncov]) {
                 int s = score[uncov];
                 if (s > bestScore || (s == bestScore && timestamp[uncov] < bestTimestamp)) {
-                    bestScore = s;
-                    bestVertex = uncov;
-                    bestTimestamp = timestamp[uncov];
+                    bestScore = s; bestVertex = uncov; bestTimestamp = timestamp[uncov];
                 }
             }
 
-            // Check neighbors of uncov
             var neighbors = csr.GetNeighbors(uncov);
             for (int i = 0; i < neighbors.Length; i++) {
                 int cand = neighbors[i];
                 if (!solList.Contains(cand) && confChange[cand]) {
                     int s = score[cand];
                     if (s > bestScore || (s == bestScore && timestamp[cand] < bestTimestamp)) {
-                        bestScore = s;
-                        bestVertex = cand;
-                        bestTimestamp = timestamp[cand];
+                        bestScore = s; bestVertex = cand; bestTimestamp = timestamp[cand];
                     }
                 }
             }
         }
 
-        // Fallback: if BMS found nothing (all CC=false), scan for any eligible vertex
         if (bestVertex == -1) {
             for (int v = 0; v < n; v++) {
                 if (!solList.Contains(v) && confChange[v]) {
                     int s = score[v];
                     if (s > bestScore || (s == bestScore && timestamp[v] < bestTimestamp)) {
-                        bestScore = s;
-                        bestVertex = v;
-                        bestTimestamp = timestamp[v];
+                        bestScore = s; bestVertex = v; bestTimestamp = timestamp[v];
                     }
                 }
             }
         }
-
-        // Last resort: ignore ConfChange
         if (bestVertex == -1) {
             for (int v = 0; v < n; v++) {
                 if (!solList.Contains(v)) {
                     int s = score[v];
                     if (s > bestScore || (s == bestScore && timestamp[v] < bestTimestamp)) {
-                        bestScore = s;
-                        bestVertex = v;
-                        bestTimestamp = timestamp[v];
+                        bestScore = s; bestVertex = v; bestTimestamp = timestamp[v];
                     }
                 }
             }
         }
-
         return bestVertex;
     }
 
@@ -474,50 +419,35 @@ internal class CC2FS_Claude : ISolver {
         int bestVertex = -1;
         int bestScore = int.MinValue;
         int bestTimestamp = int.MaxValue;
-
         if (solList.count == 0) return -1;
 
         for (int sample = 0; sample < BMS_K; sample++) {
             int cand = solList.RandomElement(rng);
             if (useForbidList && forbid[cand]) continue;
-
             int s = score[cand];
             if (s > bestScore || (s == bestScore && timestamp[cand] < bestTimestamp)) {
-                bestScore = s;
-                bestVertex = cand;
-                bestTimestamp = timestamp[cand];
+                bestScore = s; bestVertex = cand; bestTimestamp = timestamp[cand];
             }
         }
 
-        // Fallback: scan all if BMS found nothing (e.g., everything forbidden)
         if (bestVertex == -1) {
             for (int i = 0; i < solList.count; i++) {
                 int cand = solList.items[i];
                 if (useForbidList && forbid[cand]) continue;
                 int s = score[cand];
                 if (s > bestScore || (s == bestScore && timestamp[cand] < bestTimestamp)) {
-                    bestScore = s;
-                    bestVertex = cand;
-                    bestTimestamp = timestamp[cand];
+                    bestScore = s; bestVertex = cand; bestTimestamp = timestamp[cand];
                 }
             }
         }
-
-        // If still nothing (all forbidden), pick any
-        if (bestVertex == -1 && solList.count > 0) {
-            bestVertex = solList.items[0];
-        }
-
+        if (bestVertex == -1 && solList.count > 0) bestVertex = solList.items[0];
         return bestVertex;
     }
-
-    // --- Frequency updates ---
 
     private void IncreaseFreq() {
         for (int i = 0; i < uncovList.count; i++) {
             int v = uncovList.items[i];
             freq[v]++;
-
             var neighbors = csr.GetNeighbors(v);
             for (int j = 0; j < neighbors.Length; j++) {
                 int w = neighbors[j];
@@ -525,7 +455,6 @@ internal class CC2FS_Claude : ISolver {
             }
             if (!solList.Contains(v)) score[v] += 1;
         }
-
         smoothCounter++;
         if (smoothCounter >= SMOOTH_INTERVAL) {
             smoothCounter = 0;
@@ -533,52 +462,128 @@ internal class CC2FS_Claude : ISolver {
         }
     }
 
-    // --- Phase 5: Frequency smoothing ---
     private void SmoothFrequencies() {
-        for (int v = 0; v < n; v++) {
-            freq[v] = Math.Max(1, freq[v] / 2);
-        }
-        // Recompute all scores from scratch after smoothing
-        for (int v = 0; v < n; v++) {
-            score[v] = ComputeScoreFromScratch(v);
+        for (int v = 0; v < n; v++) freq[v] = Math.Max(1, freq[v] / 2);
+        for (int v = 0; v < n; v++) score[v] = ComputeScoreFromScratch(v);
+    }
+
+    // --- V2-specific: Progressive perturbation ---
+
+    private void Perturb(int intensity) {
+        if (solList.count == 0) return;
+        switch (intensity) {
+            case 1: PerturbRandom(rng.Next(3, 8)); break;           // mild: similar to V1
+            case 2: PerturbHighFreq(rng.Next(10, 30)); break;      // medium: targeted
+            case 3: PerturbBfsCluster(rng.Next(30, 100)); break;   // strong: structural
         }
     }
 
-    // --- Phase 5: Perturbation on stagnation ---
-    private void Perturb() {
-        int toRemove = Math.Min(rng.Next(3, 6), solList.count);
-        for (int i = 0; i < toRemove; i++) {
+    private void PerturbRandom(int count) {
+        count = Math.Min(count, solList.count);
+        for (int i = 0; i < count; i++) {
             if (solList.count == 0) break;
-            int v = solList.RandomElement(rng);
-            RemoveVertex(v);
+            RemoveVertex(solList.RandomElement(rng));
         }
     }
 
-    // --- Score computation from scratch (for init and debug) ---
+    private void PerturbHighFreq(int count) {
+        count = Math.Min(count, solList.count);
+        var candidates = new int[solList.count];
+        Array.Copy(solList.items, candidates, solList.count);
+        int candCount = solList.count;
+        Array.Sort(candidates, 0, candCount, Comparer<int>.Create((a, b) => freq[b].CompareTo(freq[a])));
+        for (int i = 0; i < count && i < candCount; i++) {
+            if (solList.Contains(candidates[i]))
+                RemoveVertex(candidates[i]);
+        }
+    }
+
+    private void PerturbBfsCluster(int count) {
+        if (solList.count == 0) return;
+        count = Math.Min(count, solList.count);
+        int seed = solList.RandomElement(rng);
+        var queue = new Queue<int>();
+        var visited = new HashSet<int>();
+        queue.Enqueue(seed);
+        visited.Add(seed);
+        var toRemove = new List<int>(count);
+        while (queue.Count > 0 && toRemove.Count < count) {
+            int v = queue.Dequeue();
+            toRemove.Add(v);
+            var neighbors = csr.GetNeighbors(v);
+            for (int i = 0; i < neighbors.Length; i++) {
+                int u = neighbors[i];
+                if (solList.Contains(u) && !visited.Contains(u)) {
+                    visited.Add(u);
+                    queue.Enqueue(u);
+                }
+            }
+        }
+        foreach (int v in toRemove)
+            if (solList.Contains(v)) RemoveVertex(v);
+    }
+
+    // --- V2-specific: Randomized restart with diversity ---
+
+    private void TriggerRestart(IGraph graph) {
+        restartCount++;
+
+        while (solList.count > 0)
+            SolRemoveVertex(solList.items[solList.count - 1]);
+
+        uncovList = new SwapList(n);
+        for (int v = 0; v < n; v++)
+            if (coveredCount[v] == 0) uncovList.Add(v);
+
+        var covered = new BitArray(n, false);
+        int covCount = 0;
+        var heap = new IndexedMaxHeap(n);
+        double diversityWeight = Math.Min(restartCount * 0.5, 5.0);
+        int noiseRange = Math.Max(1, n / 1000);
+
+        for (int v = 0; v < n; v++) {
+            int deg = csr.GetNeighbors(v).Length + 1;
+            int penalty = (int)(diversityWeight * vertexAppearCount[v]);
+            int noise = rng.Next(0, noiseRange);
+            heap.Insert(v, Math.Max(0, deg - penalty + noise));
+        }
+
+        while (!heap.IsEmpty() && covCount < n) {
+            int sel = heap.RemoveMax();
+            if (covered[sel]) continue;
+            SolAddVertex(sel);
+            covered[sel] = true;
+            covCount++;
+            var neighbors = csr.GetNeighbors(sel);
+            for (int i = 0; i < neighbors.Length; i++) {
+                int nbr = neighbors[i];
+                if (!covered[nbr]) { covered[nbr] = true; covCount++; }
+            }
+        }
+
+        Array.Fill(confChange, true);
+        Array.Fill(freq, 1);
+        smoothCounter = 0;
+        for (int v = 0; v < n; v++)
+            score[v] = ComputeScoreFromScratch(v);
+    }
+
     private int ComputeScoreFromScratch(int u) {
         if (!solList.Contains(u)) {
-            // Add-score: sum of freq[v] for uncovered v in {u} ∪ N(u)
             int sum = 0;
             var neighbors = csr.GetNeighbors(u);
             for (int i = 0; i < neighbors.Length; i++) {
-                int v = neighbors[i];
-                if (coveredCount[v] == 0)
-                    sum += freq[v];
+                if (coveredCount[neighbors[i]] == 0) sum += freq[neighbors[i]];
             }
-            if (coveredCount[u] == 0)
-                sum += freq[u];
+            if (coveredCount[u] == 0) sum += freq[u];
             return sum;
         } else {
-            // Remove-score: negative sum of freq[v] for singly-covered v in {u} ∪ N(u)
             int sum = 0;
             var neighbors = csr.GetNeighbors(u);
             for (int i = 0; i < neighbors.Length; i++) {
-                int v = neighbors[i];
-                if (coveredCount[v] == 1)
-                    sum -= freq[v];
+                if (coveredCount[neighbors[i]] == 1) sum -= freq[neighbors[i]];
             }
-            if (coveredCount[u] == 1)
-                sum -= freq[u];
+            if (coveredCount[u] == 1) sum -= freq[u];
             return sum;
         }
     }
