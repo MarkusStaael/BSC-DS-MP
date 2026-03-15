@@ -1,18 +1,15 @@
 using BSC_DS_MP.DataStructures.Graph;
-using BSC_DS_MP.DataStructures.Heap;
 using BSC_DS_MP.Util;
 using ScottPlot;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace BSC_DS_MP.Solvers;
 
 /// <summary>
-/// CC2FS V2: Same core loop as V1 but with progressive perturbation
-/// (escalating disruption on stagnation) and randomized restarts with
-/// history-based diversity penalties.
+/// CC2FS V2: Same core loop as V1 but with score-guided perturbation,
+/// elite solution pool, and restart-from-elite on deep stagnation.
 /// </summary>
 internal class CC2FS_ClaudeV2 : ISolver {
 
@@ -74,16 +71,20 @@ internal class CC2FS_ClaudeV2 : ISolver {
     int[] forbidBuf;
     int forbidCount;
 
-    // --- Stagnation / progressive perturbation ---
+    // --- Stagnation ---
     int stepsSinceImprovement;
-    int perturbLevel;
-    static readonly int[] STAGNATION_THRESHOLDS = { 100_000, 300_000, 700_000, 1_500_000 };
+    int totalStepsSinceBestImproved;
+    const int STAGNATION_THRESHOLD = 50_000;
+    const int RESTART_THRESHOLD = 500_000;
 
-    const int SMOOTH_INTERVAL = 100_000;
+    const int SMOOTH_INTERVAL = 75_000;
     int smoothCounter;
 
-    // --- Restart history ---
-    int[] vertexAppearCount;
+    // --- Elite pool ---
+    const int ELITE_POOL_SIZE = 3;
+    int[][] elitePool;
+    int[] eliteCounts;
+    int eliteUsed;
     int restartCount;
 
     private readonly bool useOneLevelCC;
@@ -126,9 +127,11 @@ internal class CC2FS_ClaudeV2 : ISolver {
         stepCounter = 0;
         smoothCounter = 0;
         stepsSinceImprovement = 0;
-        perturbLevel = 0;
+        totalStepsSinceBestImproved = 0;
 
-        vertexAppearCount = new int[n];
+        elitePool = new int[ELITE_POOL_SIZE][];
+        eliteCounts = new int[ELITE_POOL_SIZE];
+        eliteUsed = 0;
         restartCount = 0;
 
         ISolution init = new GreedyDecreaseKey().Solve(graph, null);
@@ -164,10 +167,8 @@ internal class CC2FS_ClaudeV2 : ISolver {
                     bestSolVertices = new int[solList.count];
                     Array.Copy(solList.items, bestSolVertices, solList.count);
                     stepsSinceImprovement = 0;
-                    perturbLevel = 0;
-
-                    for (int i = 0; i < solList.count; i++)
-                        vertexAppearCount[solList.items[i]]++;
+                    totalStepsSinceBestImproved = 0;
+                    UpdateElitePool(solList.items, solList.count);
                 }
                 int v = GetBestRemoveBMS(useForbidList: false);
                 RemoveVertex(v);
@@ -189,20 +190,19 @@ internal class CC2FS_ClaudeV2 : ISolver {
             }
 
             stepsSinceImprovement++;
+            totalStepsSinceBestImproved++;
 
-            // Progressive perturbation (V2 improvement over V1's fixed perturbation)
-            if (perturbLevel < STAGNATION_THRESHOLDS.Length &&
-                stepsSinceImprovement > STAGNATION_THRESHOLDS[perturbLevel] &&
-                solList.count > 0) {
-                if (perturbLevel < 3) {
-                    Perturb(perturbLevel + 1);
-                    perturbLevel++;
-                    stepsSinceImprovement = 0;
-                } else {
-                    TriggerRestart(graph);
-                    perturbLevel = 0;
-                    stepsSinceImprovement = 0;
-                }
+            // Score-guided perturbation on stagnation
+            if (stepsSinceImprovement > STAGNATION_THRESHOLD && solList.count > 0) {
+                Perturb();
+                stepsSinceImprovement = 0;
+            }
+
+            // Restart from elite on deep stagnation
+            if (totalStepsSinceBestImproved > RESTART_THRESHOLD && eliteUsed > 0) {
+                RestartFromElite();
+                stepsSinceImprovement = 0;
+                totalStepsSinceBestImproved = 0;
             }
         }
 
@@ -467,67 +467,66 @@ internal class CC2FS_ClaudeV2 : ISolver {
         for (int v = 0; v < n; v++) score[v] = ComputeScoreFromScratch(v);
     }
 
-    // --- V2-specific: Progressive perturbation ---
+    // --- Score-guided perturbation: remove 3-5 easiest-to-remove vertices ---
 
-    private void Perturb(int intensity) {
-        if (solList.count == 0) return;
-        switch (intensity) {
-            case 1: PerturbRandom(rng.Next(3, 8)); break;           // mild: similar to V1
-            case 2: PerturbHighFreq(rng.Next(10, 30)); break;      // medium: targeted
-            case 3: PerturbBfsCluster(rng.Next(30, 100)); break;   // strong: structural
+    private void Perturb() {
+        int toRemove = rng.Next(3, 6);
+        toRemove = Math.Min(toRemove, solList.count);
+        if (toRemove == 0) return;
+
+        // BMS-style sampling: find the vertices with highest score (least costly to remove)
+        int[] candidates = new int[toRemove];
+        int[] candScores = new int[toRemove];
+        Array.Fill(candScores, int.MinValue);
+
+        int sampleSize = Math.Min(BMS_K * 2, solList.count);
+        for (int s = 0; s < sampleSize; s++) {
+            int v = solList.RandomElement(rng);
+            int sc = score[v];
+            int worstIdx = 0;
+            for (int j = 1; j < toRemove; j++) {
+                if (candScores[j] < candScores[worstIdx]) worstIdx = j;
+            }
+            if (sc > candScores[worstIdx]) {
+                candidates[worstIdx] = v;
+                candScores[worstIdx] = sc;
+            }
         }
-    }
 
-    private void PerturbRandom(int count) {
-        count = Math.Min(count, solList.count);
-        for (int i = 0; i < count; i++) {
-            if (solList.count == 0) break;
-            RemoveVertex(solList.RandomElement(rng));
-        }
-    }
-
-    private void PerturbHighFreq(int count) {
-        count = Math.Min(count, solList.count);
-        var candidates = new int[solList.count];
-        Array.Copy(solList.items, candidates, solList.count);
-        int candCount = solList.count;
-        Array.Sort(candidates, 0, candCount, Comparer<int>.Create((a, b) => freq[b].CompareTo(freq[a])));
-        for (int i = 0; i < count && i < candCount; i++) {
-            if (solList.Contains(candidates[i]))
+        for (int i = 0; i < toRemove; i++) {
+            if (candScores[i] != int.MinValue && solList.Contains(candidates[i]))
                 RemoveVertex(candidates[i]);
         }
     }
 
-    private void PerturbBfsCluster(int count) {
-        if (solList.count == 0) return;
-        count = Math.Min(count, solList.count);
-        int seed = solList.RandomElement(rng);
-        var queue = new Queue<int>();
-        var visited = new HashSet<int>();
-        queue.Enqueue(seed);
-        visited.Add(seed);
-        var toRemove = new List<int>(count);
-        while (queue.Count > 0 && toRemove.Count < count) {
-            int v = queue.Dequeue();
-            toRemove.Add(v);
-            var neighbors = csr.GetNeighbors(v);
-            for (int i = 0; i < neighbors.Length; i++) {
-                int u = neighbors[i];
-                if (solList.Contains(u) && !visited.Contains(u)) {
-                    visited.Add(u);
-                    queue.Enqueue(u);
-                }
+    // --- Elite pool ---
+
+    private void UpdateElitePool(int[] solVertices, int solCount) {
+        if (eliteUsed < ELITE_POOL_SIZE) {
+            elitePool[eliteUsed] = new int[solCount];
+            Array.Copy(solVertices, elitePool[eliteUsed], solCount);
+            eliteCounts[eliteUsed] = solCount;
+            eliteUsed++;
+        } else {
+            int worstIdx = 0;
+            for (int i = 1; i < ELITE_POOL_SIZE; i++) {
+                if (eliteCounts[i] > eliteCounts[worstIdx]) worstIdx = i;
+            }
+            if (solCount < eliteCounts[worstIdx]) {
+                elitePool[worstIdx] = new int[solCount];
+                Array.Copy(solVertices, elitePool[worstIdx], solCount);
+                eliteCounts[worstIdx] = solCount;
             }
         }
-        foreach (int v in toRemove)
-            if (solList.Contains(v)) RemoveVertex(v);
     }
 
-    // --- V2-specific: Randomized restart with diversity ---
+    // --- Restart from a random elite solution ---
 
-    private void TriggerRestart(IGraph graph) {
+    private void RestartFromElite() {
         restartCount++;
+        int idx = rng.Next(eliteUsed);
 
+        // Clear current solution
         while (solList.count > 0)
             SolRemoveVertex(solList.items[solList.count - 1]);
 
@@ -535,35 +534,21 @@ internal class CC2FS_ClaudeV2 : ISolver {
         for (int v = 0; v < n; v++)
             if (coveredCount[v] == 0) uncovList.Add(v);
 
-        var covered = new BitArray(n, false);
-        int covCount = 0;
-        var heap = new IndexedMaxHeap(n);
-        double diversityWeight = Math.Min(restartCount * 0.5, 5.0);
-        int noiseRange = Math.Max(1, n / 1000);
+        // Reload elite solution
+        for (int i = 0; i < eliteCounts[idx]; i++)
+            SolAddVertex(elitePool[idx][i]);
 
-        for (int v = 0; v < n; v++) {
-            int deg = csr.GetNeighbors(v).Length + 1;
-            int penalty = (int)(diversityWeight * vertexAppearCount[v]);
-            int noise = rng.Next(0, noiseRange);
-            heap.Insert(v, Math.Max(0, deg - penalty + noise));
-        }
+        uncovList = new SwapList(n);
+        for (int v = 0; v < n; v++)
+            if (coveredCount[v] == 0) uncovList.Add(v);
 
-        while (!heap.IsEmpty() && covCount < n) {
-            int sel = heap.RemoveMax();
-            if (covered[sel]) continue;
-            SolAddVertex(sel);
-            covered[sel] = true;
-            covCount++;
-            var neighbors = csr.GetNeighbors(sel);
-            for (int i = 0; i < neighbors.Length; i++) {
-                int nbr = neighbors[i];
-                if (!covered[nbr]) { covered[nbr] = true; covCount++; }
-            }
-        }
+        // Reset frequencies to break old patterns
+        for (int v = 0; v < n; v++)
+            freq[v] = Math.Max(1, freq[v] / 4);
 
         Array.Fill(confChange, true);
-        Array.Fill(freq, 1);
         smoothCounter = 0;
+
         for (int v = 0; v < n; v++)
             score[v] = ComputeScoreFromScratch(v);
     }
