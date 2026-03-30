@@ -12,10 +12,6 @@ using System.Linq;
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
 internal class CC2FS : ISolver {
-
-    // N2(v) = second level neighbors
-    // N1(v) = first level neighbors
-
     internal class SimpleSol {
         public HashSet<int> vertices;
         public HashSet<int> uncoveredVertices;
@@ -30,6 +26,7 @@ internal class CC2FS : ISolver {
             this.graph = graph;
             coveredSum = 0;
         }
+
 
         public void InitFromSol(ISolution sol) {
             foreach (int i in sol.GetEnumerator()) {
@@ -111,6 +108,25 @@ internal class CC2FS : ISolver {
         }
     }
 
+    internal class RetSol : ISolution {
+        public BitArray Solution;
+        private int count;
+        public RetSol(int size) {
+            Solution = new BitArray(size);
+        }
+        public void AddVertex(int v) {
+        }
+
+        public int Count() {
+            return count;
+        }
+
+        public IEnumerable<int> GetEnumerator() {
+            for (int i = 0; i < Solution.Length; i++) {
+                if (Solution.Get(i)) yield return i;
+            }
+        }
+    }
 
     BitArray ConfChange;        // CC2 configuration change flags
     IGraph graph;
