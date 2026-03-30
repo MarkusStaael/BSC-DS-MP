@@ -141,7 +141,14 @@ internal class CC2FS : ISolver {
     BitArray InHeap;
     BitArray InRemoveHeap;
 
+    StatsGetter statsGetter;
+    internal class StatsGetter {
+        public int[] SelectionCounts;
 
+        public StatsGetter(int size) {
+            SelectionCounts = new int[size];
+        }
+    }
 
     public CC2FS(IGraph graph) {
         this.graph = graph;
@@ -150,6 +157,7 @@ internal class CC2FS : ISolver {
         RemoveHeap = new(graph.getSize());
         InHeap = new(graph.getSize(), false);
         InRemoveHeap = new(graph.getSize(), false);
+        statsGetter = new(graph.getSize());
 
     }
 
@@ -386,6 +394,7 @@ internal class CC2FS : ISolver {
     }
 
     private void AddVertex(int v) {
+        statsGetter.SelectionCounts[v] += 1;
         CandidateSol.AddVertex(v);
 
         foreach (int u in TwoLevelNeighborhood[v])
@@ -412,9 +421,12 @@ internal class CC2FS : ISolver {
         // Ensure v is out of AddHeap, then add to RemoveHeap
         if (InHeap[v]) { AddHeap.Remove(v); InHeap[v] = false; }
         AddToRemoveHeap(v);
+
+        
     }
 
     private void RemoveVertex(int v) {
+        statsGetter.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
         ConfChange.Set(v, false);
 
