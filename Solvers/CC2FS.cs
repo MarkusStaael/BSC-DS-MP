@@ -143,10 +143,27 @@ internal class CC2FS : ISolver {
 
     StatsGetter statsGetter;
     internal class StatsGetter {
-        public int[] SelectionCounts;
+        public double[] SelectionCounts;
 
         public StatsGetter(int size) {
-            SelectionCounts = new int[size];
+            SelectionCounts = new double[size];
+        }
+
+        public void Print() {
+            var plt = new Plot();
+
+            // Bar chart
+            var bar = new Bar();
+
+            SelectionCounts.Sort();
+
+            plt.Add.Bars(SelectionCounts);
+
+
+            plt.Title("Vertex Selection Frequency");
+            plt.YLabel("Times Selected");
+            plt.XLabel("Vertex ID");
+            plt.SavePng("CCFS_Selection_Frequency.png", 2000, 700);
         }
     }
 
@@ -261,6 +278,8 @@ internal class CC2FS : ISolver {
         double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
         plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
         plt.SavePng("quickstart.png", 2000, 700);
+
+        statsGetter.Print();
 
         return ret;
     }

@@ -1,8 +1,0 @@
-{
-  "solvers": ["greedy-dk", "cc2fs-claude"],
-  "files": ["heuristic_001.gr"],
-  "dataDir": "Data",
-  "timeLimit": 10,
-  "verify": true,
-  "selfTest": true
-}
