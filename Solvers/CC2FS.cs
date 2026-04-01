@@ -163,8 +163,10 @@ internal class CC2FS : ISolver {
 
             plt.Title("Vertex Selection Frequency");
             plt.YLabel("Times Selected");
-            plt.XLabel("Vertex ID");
-            plt.SavePng(printname+"_Selection_Frequency.png", 2000, 700);
+            string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
+            string path = Path.GetFullPath(Path.Combine(projroot, "Output", printname + "_Selection_Frequency.png"));
+
+            plt.SavePng(path, 2000, 700);
         }
     }
 
@@ -281,7 +283,10 @@ internal class CC2FS : ISolver {
         plt.Add.Scatter(ys, xs);
         double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
         plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
-        plt.SavePng(PrintName+".png", 2000, 700);
+
+        string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
+        string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + ".png"));
+        plt.SavePng(path, 2000, 700);
 
         statsGetter.Print();
 
