@@ -13,20 +13,20 @@ namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
 internal class CC2FS : ISolver {
     internal class SimpleSol {
-        public HashSet<int> vertices;
+        public BitArray VerticesInS;
         public HashSet<int> uncoveredVertices;
         public int[] coveredCount;
         public int coveredSum;
+        private int SolutionCount;
         IGraph graph;
 
         public SimpleSol(IGraph graph) {
-            vertices = new HashSet<int>();
+            VerticesInS = new(graph.getSize(),false);
             coveredCount = new int[graph.getSize()];
             uncoveredVertices = new();
             this.graph = graph;
             coveredSum = 0;
         }
-
 
         public void InitFromSol(ISolution sol) {
             foreach (int i in sol.GetEnumerator()) {
@@ -38,10 +38,21 @@ internal class CC2FS : ISolver {
                 }
             }
         }
-        public void AddVertex(int v) {
-            if (vertices.Contains(v)) throw new Exception("DOUBLE ADD: vertex " + v + " already in solution, coveredCount=" + coveredCount[v]);
 
-            vertices.Add(v);
+        private bool IsInS(int v) {
+            return VerticesInS[v] == true;
+        }
+        private void AddToS(int v) {
+            VerticesInS.Set(v, true);
+        }
+        private void RemoveFromS(int v) {
+            VerticesInS.Set(v, false);
+        }
+
+        public void AddVertex(int v) {
+            if (IsInS(v)) throw new Exception("DOUBLE ADD: vertex " + v + " already in solution, coveredCount=" + coveredCount[v]);
+            SolutionCount++;
+            AddToS(v);
             coveredCount[v] += 1;
             if (coveredCount[v] == 1) {
                 coveredSum += 1;
@@ -57,8 +68,9 @@ internal class CC2FS : ISolver {
             }
         }
         public void RemoveVertex(int v) {
-            if (!vertices.Contains(v)) throw new Exception("Vertex not in solution");
-            vertices.Remove(v);
+            if (!IsInS(v)) throw new Exception("Vertex not in solution");
+            SolutionCount--;
+            RemoveFromS(v);
             coveredCount[v] -= 1;
             if (coveredCount[v] < 0) throw new Exception("NEGATIVE COVER: vertex " + v + " coveredCount=" + coveredCount[v]);
             if (coveredCount[v] == 0) {
@@ -76,16 +88,13 @@ internal class CC2FS : ISolver {
             }
         }
         public int GetSolutionCount() {
-            return vertices.Count;
+            return SolutionCount;
         }
         public bool IsSolutionValid() {
             return coveredSum == graph.getSize();
         }
-        public IEnumerable<int> GetEnumerator() {
-            return vertices;
-        }
         public bool SolutionContains(int v) {
-            return vertices.Contains(v);
+            return IsInS(v);
         }
         public int GetCoveredSum() {
             return coveredSum;
@@ -99,18 +108,24 @@ internal class CC2FS : ISolver {
         public SimpleSol Clone() {
             var ret = new SimpleSol(graph);
 
-            ret.vertices = new HashSet<int>(vertices);
+            ret.VerticesInS = new(VerticesInS);
             ret.uncoveredVertices = new HashSet<int>(uncoveredVertices);
             ret.coveredSum = coveredSum;
             ret.coveredCount = (int[])coveredCount.Clone();
 
             return ret;
         }
+        public RetSol GetAsRetSol() {
+            var ret = new RetSol(graph.getSize());
+            ret.Solution = new BitArray(VerticesInS);
+            ret.count = SolutionCount;
+            return ret;
+        }
     }
 
     internal class RetSol : ISolution {
         public BitArray Solution;
-        private int count;
+        public int count;
         public RetSol(int size) {
             Solution = new BitArray(size);
         }
@@ -131,7 +146,7 @@ internal class CC2FS : ISolver {
     BitArray ConfChange;        // CC2 configuration change flags
     IGraph graph;
     SimpleSol CandidateSol;
-    SimpleSol BestSolution;
+    RetSol BestSolution;
     uint[] freq;
     HashSet<int> forbidlist;
     List<int>[] TwoLevelNeighborhood;
@@ -238,10 +253,10 @@ internal class CC2FS : ISolver {
 
         {
             ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()), null);
-            BestSolution = new SimpleSol(graph);
-            BestSolution.InitFromSol(init);
+            CandidateSol = new SimpleSol(graph);
+            CandidateSol.InitFromSol(init);
         }
-        CandidateSol = BestSolution.Clone();
+        BestSolution = CandidateSol.GetAsRetSol();
 
         // Populate heaps from initial solution
         foreach (int v in graph.GetNodes()) {
@@ -254,14 +269,9 @@ internal class CC2FS : ISolver {
 
         SolveLoop(token);
 
-        var ret = new BitArraySolution(graph.getSize());
-        foreach (int i in BestSolution.GetEnumerator()) {
-            ret.AddVertex(i);
-        }
-
         plotterHelper.Print();
 
-        return ret;
+        return BestSolution;
     }
 
     public void SolveLoop(CancellationToken? token) {
@@ -276,8 +286,8 @@ internal class CC2FS : ISolver {
             iterCount++;
 
             if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolutionCount() < BestSolution.GetSolutionCount()) {
-                    BestSolution = CandidateSol.Clone();
+                if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
+                    BestSolution = CandidateSol.GetAsRetSol();
                 }
                 int v = GetBestRemove(forbidList: false);
                 RemoveVertex(v);
