@@ -144,9 +144,10 @@ internal class CC2FS : ISolver {
     StatsGetter statsGetter;
     internal class StatsGetter {
         public double[] SelectionCounts;
-
-        public StatsGetter(int size) {
+        String printname;
+        public StatsGetter(int size, String printname) {
             SelectionCounts = new double[size];
+            this.printname = printname;
         }
 
         public void Print() {
@@ -163,18 +164,21 @@ internal class CC2FS : ISolver {
             plt.Title("Vertex Selection Frequency");
             plt.YLabel("Times Selected");
             plt.XLabel("Vertex ID");
-            plt.SavePng("CCFS_Selection_Frequency.png", 2000, 700);
+            plt.SavePng(printname+"_Selection_Frequency.png", 2000, 700);
         }
     }
 
-    public CC2FS(IGraph graph) {
+    String PrintName;
+
+    public CC2FS(IGraph graph,String printname) {
+        PrintName = printname;
         this.graph = graph;
         forbidlist = new HashSet<int>();
         AddHeap = new(graph.getSize());
         RemoveHeap = new(graph.getSize());
         InHeap = new(graph.getSize(), false);
         InRemoveHeap = new(graph.getSize(), false);
-        statsGetter = new(graph.getSize());
+        statsGetter = new(graph.getSize(),printname);
 
     }
 
@@ -277,7 +281,7 @@ internal class CC2FS : ISolver {
         plt.Add.Scatter(ys, xs);
         double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
         plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
-        plt.SavePng("quickstart.png", 2000, 700);
+        plt.SavePng(PrintName+".png", 2000, 700);
 
         statsGetter.Print();
 
