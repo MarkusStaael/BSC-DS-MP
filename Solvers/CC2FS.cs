@@ -1,6 +1,7 @@
 using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.DataStructures.Heap;
 using BSC_DS_MP.Util;
+using Microsoft.VisualBasic;
 using ScottPlot;
 using System;
 using System.Collections;
@@ -11,8 +12,8 @@ using System.Linq;
 
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
-internal class CC2FS : ISolver {
-    internal class SimpleSol {
+public class CC2FS : ISolver {
+    protected class SimpleSol {
         public BitArray VerticesInS;
         public HashSet<int> uncoveredVertices;
         public int[] coveredCount;
@@ -122,8 +123,7 @@ internal class CC2FS : ISolver {
             return ret;
         }
     }
-
-    internal class RetSol : ISolution {
+    protected class RetSol : ISolution {
         public BitArray Solution;
         public int count;
         public RetSol(int size) {
@@ -142,22 +142,19 @@ internal class CC2FS : ISolver {
             }
         }
     }
-
-    BitArray ConfChange;        // CC2 configuration change flags
-    IGraph graph;
-    SimpleSol CandidateSol;
-    RetSol BestSolution;
-    uint[] freq;
-    HashSet<int> forbidlist;
-    List<int>[] TwoLevelNeighborhood;
-
-    IndexedMaxHeap AddHeap;
-    IndexedMaxHeap RemoveHeap;
-    BitArray InHeap;
-    BitArray InRemoveHeap;
-
-    PlotterHelper plotterHelper;
-    internal class PlotterHelper {
+    protected BitArray ConfChange;        // CC2 configuration change flags
+    protected IGraph graph;
+    protected SimpleSol CandidateSol;
+    protected RetSol BestSolution;
+    protected uint[] freq;
+    protected HashSet<int> forbidlist;
+    protected List<int>[] TwoLevelNeighborhood;
+    protected IndexedMaxHeap AddHeap;
+    protected IndexedMaxHeap RemoveHeap;
+    protected BitArray InHeap;
+    protected BitArray InRemoveHeap;
+    protected PlotterHelper plotterHelper;
+    protected class PlotterHelper {
         public double[] SelectionCounts;
         private String PrintName;
         private List<int> size_plot;
@@ -174,7 +171,7 @@ internal class CC2FS : ISolver {
             time_plot.Add(time);
         }
 
-        public void Print() {
+        public void Print(int best) {
             string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 
             // Solution over time plot
@@ -184,7 +181,7 @@ internal class CC2FS : ISolver {
                 var plt = new Plot();
                 plt.Add.Scatter(ys, xs);
                 double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-                plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
+                plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps + ". Best: "+ best);
 
                 string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + ".png"));
                 plt.SavePng(path, 2000, 700);
@@ -269,12 +266,12 @@ internal class CC2FS : ISolver {
 
         SolveLoop(token);
 
-        plotterHelper.Print();
+        plotterHelper.Print(BestSolution.count);
 
         return BestSolution;
     }
 
-    public void SolveLoop(CancellationToken? token) {
+    protected void SolveLoop(CancellationToken? token) {
         var sw = Stopwatch.StartNew();
         if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
@@ -306,7 +303,7 @@ internal class CC2FS : ISolver {
         }
     }
 
-    public int ActualBest() {
+    protected int ActualBest() {
         //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
@@ -322,7 +319,7 @@ internal class CC2FS : ISolver {
         return reference;
     }
 
-    public int GetScore(int u) {
+    protected int GetScore(int u) {
         if (!CandidateSol.SolutionContains(u)) {
             int sum = 0;
             foreach (int v in graph.GetEdges(u)) {
@@ -346,7 +343,7 @@ internal class CC2FS : ISolver {
         }
     }
 
-    private int GetBestAdd() {
+    protected int GetBestAdd() {
         while (true) {
             int target = AddHeap.RemoveMax();
             InHeap[target] = false;
@@ -368,7 +365,7 @@ internal class CC2FS : ISolver {
         }
     }
 
-    private int GetBestRemove(bool forbidList) {
+    protected int GetBestRemove(bool forbidList) {
 
         List<int> addAgainList = new List<int>();
 
@@ -390,12 +387,12 @@ internal class CC2FS : ISolver {
         }
     }
 
-    private void AddToAddHeap(int v) {
+    protected void AddToAddHeap(int v) {
         InHeap[v] = true;
         AddHeap.Insert(v, GetScore(v));
     }
 
-    private void AddToRemoveHeap(int v) {
+    protected void AddToRemoveHeap(int v) {
         InRemoveHeap[v] = true;
         int score = GetScore(v);
 
@@ -404,7 +401,7 @@ internal class CC2FS : ISolver {
         RemoveHeap.Insert(v, score);
     }
 
-    private void UpdateHeapScores(int v) {
+    protected void UpdateHeapScores(int v) {
         if (InHeap[v]) {
             int newScore = GetScore(v);
             AddHeap.UpdateKey(v, newScore);
@@ -422,7 +419,7 @@ internal class CC2FS : ISolver {
         }
     }
 
-    private void SetCCTrue(int v) {
+    protected void SetCCTrue(int v) {
         if (ConfChange[v] == false) {
             ConfChange.Set(v, true);
             if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
@@ -434,7 +431,7 @@ internal class CC2FS : ISolver {
         }
     }
 
-    private void AddVertex(int v) {
+    protected void AddVertex(int v) {
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.AddVertex(v);
 
@@ -466,7 +463,7 @@ internal class CC2FS : ISolver {
         
     }
 
-    private void RemoveVertex(int v) {
+    protected void RemoveVertex(int v) {
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
         ConfChange.Set(v, false);
@@ -498,7 +495,7 @@ internal class CC2FS : ISolver {
         //}
     }
 
-    public void IncreaseFreq() {
+    protected void IncreaseFreq() {
         foreach (int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;
 

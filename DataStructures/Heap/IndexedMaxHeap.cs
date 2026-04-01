@@ -7,7 +7,7 @@ namespace BSC_DS_MP.DataStructures.Heap
     /// current keys.  A "position" array maps a node to its location in the
     /// binary-heap array so we can update the key efficiently.
     /// </summary>
-    internal class IndexedMaxHeap
+    public class IndexedMaxHeap
     {
         private readonly int[] _heap;      // 1-based binary heap of node ids
         private readonly int[] _key;       // _key[node] = current key value
