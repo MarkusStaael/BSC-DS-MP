@@ -3,11 +3,13 @@ using BSC_DS_MP.DataStructures.Heap;
 using BSC_DS_MP.Util;
 using Microsoft.VisualBasic;
 using ScottPlot;
+using ScottPlot.Plottables;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Transactions;
 
 
 namespace BSC_DS_MP.Solvers;
@@ -159,11 +161,21 @@ public class CC2FS : ISolver {
         private String PrintName;
         private List<int> size_plot;
         private List<long> time_plot;
+
+        private List<int> size_plot_ham;
+        private List<long> time_plot_ham;
         public PlotterHelper(int size, String printname) {
             SelectionCounts = new double[size];
             this.PrintName = printname;
             time_plot = new();
             size_plot = new();
+            size_plot_ham = new();
+            time_plot_ham = new();
+        }
+
+        public void AddHamDatapoint(int size, long time) {
+            size_plot_ham.Add(size);
+            time_plot_ham.Add(time);
         }
 
         public void AddSOTDatapoint(int size, long time) {
@@ -173,6 +185,19 @@ public class CC2FS : ISolver {
 
         public void Print(int best) {
             string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
+            /// HAMMING DIST EVERY 1000
+
+            {
+                long[] ys = time_plot_ham.ToArray();
+                int[] xs = size_plot_ham.ToArray();
+                var plt = new Plot();
+                plt.Add.Scatter(ys, xs);
+                double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
+                plt.Title("Hamming distance over time");
+
+                string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_hamming.png"));
+                plt.SavePng(path, 2000, 700);
+            }
 
             // Solution over time plot
             {
@@ -198,6 +223,13 @@ public class CC2FS : ISolver {
                 plt.SavePng(path, 2000, 700);
             }
         }
+    }
+
+    protected int Hamming(BitArray a, BitArray b) {
+        int count = 0;
+        for (int i = 0; i < a.Length; i++)
+            if (a[i] != b[i]) count++;
+        return count;
     }
 
     String PrintName;
@@ -275,9 +307,14 @@ public class CC2FS : ISolver {
         var sw = Stopwatch.StartNew();
         if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
-        int iterCount = 0;
+        uint iterCount = 0;
+        RetSol prevHam = CandidateSol.GetAsRetSol();
         while (!((CancellationToken)token).IsCancellationRequested) {
-            if (iterCount % 10 == 0) {
+            if (iterCount % 10 == 0) { // CAN OPTIMIZE?
+                if(iterCount % 1000 == 0) {
+                    plotterHelper.AddHamDatapoint(Hamming(CandidateSol.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
+                    prevHam = CandidateSol.GetAsRetSol();
+                }
                 plotterHelper.AddSOTDatapoint(CandidateSol.GetSolutionCount(), sw.ElapsedMilliseconds);
             }
             iterCount++;
