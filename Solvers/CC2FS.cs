@@ -131,47 +131,64 @@ internal class CC2FS : ISolver {
     BitArray ConfChange;        // CC2 configuration change flags
     IGraph graph;
     SimpleSol CandidateSol;
+    SimpleSol BestSolution;
     uint[] freq;
     HashSet<int> forbidlist;
     List<int>[] TwoLevelNeighborhood;
-
 
     IndexedMaxHeap AddHeap;
     IndexedMaxHeap RemoveHeap;
     BitArray InHeap;
     BitArray InRemoveHeap;
 
-    StatsGetter statsGetter;
-    internal class StatsGetter {
+    PlotterHelper plotterHelper;
+    internal class PlotterHelper {
         public double[] SelectionCounts;
-        String printname;
-        public StatsGetter(int size, String printname) {
+        private String PrintName;
+        private List<int> size_plot;
+        private List<long> time_plot;
+        public PlotterHelper(int size, String printname) {
             SelectionCounts = new double[size];
-            this.printname = printname;
+            this.PrintName = printname;
+            time_plot = new();
+            size_plot = new();
+        }
+
+        public void AddSOTDatapoint(int size, long time) {
+            size_plot.Add(size);
+            time_plot.Add(time);
         }
 
         public void Print() {
-            var plt = new Plot();
-
-            // Bar chart
-            var bar = new Bar();
-
-            SelectionCounts.Sort();
-
-            plt.Add.Bars(SelectionCounts);
-
-
-            plt.Title("Vertex Selection Frequency");
-            plt.YLabel("Times Selected");
             string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
-            string path = Path.GetFullPath(Path.Combine(projroot, "Output", printname + "_Selection_Frequency.png"));
 
-            plt.SavePng(path, 2000, 700);
+            // Solution over time plot
+            {
+                long[] ys = time_plot.ToArray();
+                int[] xs = size_plot.ToArray();
+                var plt = new Plot();
+                plt.Add.Scatter(ys, xs);
+                double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
+                plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
+
+                string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + ".png"));
+                plt.SavePng(path, 2000, 700);
+            }
+
+            // SELECTION COUNT BAR PLOT
+            {
+                var plt = new Plot();
+                SelectionCounts.Sort();
+                plt.Add.Bars(SelectionCounts);
+                plt.Title("Vertex Selection Frequency");
+                plt.YLabel("Times Selected");
+                var path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_Selection_Frequency.png"));
+                plt.SavePng(path, 2000, 700);
+            }
         }
     }
 
     String PrintName;
-
     public CC2FS(IGraph graph,String printname) {
         PrintName = printname;
         this.graph = graph;
@@ -180,17 +197,11 @@ internal class CC2FS : ISolver {
         RemoveHeap = new(graph.getSize());
         InHeap = new(graph.getSize(), false);
         InRemoveHeap = new(graph.getSize(), false);
-        statsGetter = new(graph.getSize(),printname);
+        plotterHelper = new(graph.getSize(),printname);
 
     }
 
     public ISolution Solve(IGraph graph, CancellationToken? token) {
-
-        var size_plot = new List<int>();
-        var time_plot = new List<long>();
-
-        if (token == null) throw new Exception("CC2FS needs a CancellationToken");
-
         // --- Build TwoLevelNeighborhood ---
         TwoLevelNeighborhood = new List<int>[graph.getSize()];
         {
@@ -225,13 +236,12 @@ internal class CC2FS : ISolver {
         freq = new uint[graph.getSize()];
         for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
 
-        SimpleSol bestSolution;
         {
             ISolution init = new GreedyDecreaseKey().Solve(graph.CloneInto(new AdjSetLstGraphFactory()), null);
-            bestSolution = new SimpleSol(graph);
-            bestSolution.InitFromSol(init);
+            BestSolution = new SimpleSol(graph);
+            BestSolution.InitFromSol(init);
         }
-        CandidateSol = bestSolution.Clone();
+        CandidateSol = BestSolution.Clone();
 
         // Populate heaps from initial solution
         foreach (int v in graph.GetNodes()) {
@@ -242,19 +252,32 @@ internal class CC2FS : ISolver {
             }
         }
 
+        SolveLoop(token);
+
+        var ret = new BitArraySolution(graph.getSize());
+        foreach (int i in BestSolution.GetEnumerator()) {
+            ret.AddVertex(i);
+        }
+
+        plotterHelper.Print();
+
+        return ret;
+    }
+
+    public void SolveLoop(CancellationToken? token) {
         var sw = Stopwatch.StartNew();
+        if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
         int iterCount = 0;
         while (!((CancellationToken)token).IsCancellationRequested) {
             if (iterCount % 10 == 0) {
-                size_plot.Add(CandidateSol.GetSolutionCount());
-                time_plot.Add(sw.ElapsedMilliseconds);
+                plotterHelper.AddSOTDatapoint(CandidateSol.GetSolutionCount(), sw.ElapsedMilliseconds);
             }
             iterCount++;
 
             if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolutionCount() < bestSolution.GetSolutionCount()) {
-                    bestSolution = CandidateSol.Clone();
+                if (CandidateSol.GetSolutionCount() < BestSolution.GetSolutionCount()) {
+                    BestSolution = CandidateSol.Clone();
                 }
                 int v = GetBestRemove(forbidList: false);
                 RemoveVertex(v);
@@ -271,26 +294,6 @@ internal class CC2FS : ISolver {
                 }
             }
         }
-
-        var ret = new BitArraySolution(graph.getSize());
-        foreach (int i in bestSolution.GetEnumerator()) {
-            ret.AddVertex(i);
-        }
-
-        long[] ys = time_plot.ToArray();
-        int[] xs = size_plot.ToArray();
-        var plt = new Plot();
-        plt.Add.Scatter(ys, xs);
-        double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-        plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps);
-
-        string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
-        string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + ".png"));
-        plt.SavePng(path, 2000, 700);
-
-        statsGetter.Print();
-
-        return ret;
     }
 
     public int ActualBest() {
@@ -422,7 +425,7 @@ internal class CC2FS : ISolver {
     }
 
     private void AddVertex(int v) {
-        statsGetter.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.AddVertex(v);
 
         foreach (int u in TwoLevelNeighborhood[v])
@@ -454,7 +457,7 @@ internal class CC2FS : ISolver {
     }
 
     private void RemoveVertex(int v) {
-        statsGetter.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
         ConfChange.Set(v, false);
 
