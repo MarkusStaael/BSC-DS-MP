@@ -24,8 +24,8 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-RunTest(new CC2FS(graph,"CC2FS"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
-//RunTest(new CC2FSWithRandom(graph, "random"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
+//RunTest(new CC2FS(graph,"CC2FS"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
+RunTest(new CC2FSWithRandom(graph, "random"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {

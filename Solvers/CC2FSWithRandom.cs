@@ -19,15 +19,17 @@ public class CC2FSWithRandom : CC2FS {
     protected int GetNextRandomRemove(int random) {
         int i = random;
         while (true) {
-            if (CandidateSol.SolutionContains(i) && !forbidlist.Contains(i)) return i;
-            else
+            if (CandidateSol.SolutionContains(i) && !forbidlist.Contains(i)) {
+                RemoveHeap.Remove(i);
+                return i;
+            } else
                 i = (i + 1) % graph.getSize();
         }
     }
 
 
 
-    public override void DoLoopLogic() {
+    protected override void DoLoopLogic() {
         if (CandidateSol.IsSolutionValid()) {
             if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
                 BestSolution = CandidateSol.GetAsRetSol();
