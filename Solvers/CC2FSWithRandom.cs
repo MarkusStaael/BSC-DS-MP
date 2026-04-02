@@ -9,8 +9,13 @@ using static BSC_DS_MP.Solvers.CC2FS;
 namespace BSC_DS_MP.Solvers;
 
 public class CC2FSWithRandom : CC2FS {
-    public CC2FSWithRandom(IGraph graph, string printname) : base(graph, printname) {}
+    public CC2FSWithRandom(IGraph graph, string printname) : base(graph, printname) {
+    
+        Random = new Random(0);
 
+    }
+
+    Random Random;
     protected int GetNextRandomRemove(int random) {
         int i = random;
         while (true) {
@@ -21,35 +26,24 @@ public class CC2FSWithRandom : CC2FS {
     }
 
 
-    public void SolveLoop(CancellationToken? token) {
-        var sw = Stopwatch.StartNew();
-        var random = new Random(0);
-        if (token == null) throw new Exception("CC2FS needs a CancellationToken");
 
-        int iterCount = 0;
-        while (!((CancellationToken)token).IsCancellationRequested) {
-            if (iterCount % 10 == 0) {
-                plotterHelper.AddSOTDatapoint(CandidateSol.GetSolutionCount(), sw.ElapsedMilliseconds);
+    public override void DoLoopLogic() {
+        if (CandidateSol.IsSolutionValid()) {
+            if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
+                BestSolution = CandidateSol.GetAsRetSol();
             }
-            iterCount++;
+            int v = GetBestRemove(forbidList: false);
+            RemoveVertex(v);
+        } else {
+            int v = GetNextRandomRemove(Random.Next(graph.getSize()));
+            RemoveVertex(v);
+            forbidlist.Clear();
 
-            if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
-                    BestSolution = CandidateSol.GetAsRetSol();
-                }
-                int v = GetBestRemove(forbidList: false);
-                RemoveVertex(v); 
-            } else {
-                int v = GetNextRandomRemove(random.Next(graph.getSize()));
-                RemoveVertex(v);
-                forbidlist.Clear();
-
-                while (!CandidateSol.IsSolutionValid() && !((CancellationToken)token).IsCancellationRequested) {
-                    v = GetBestAdd();
-                    AddVertex(v);
-                    forbidlist.Add(v);
-                    IncreaseFreq();
-                }
+            while (!CandidateSol.IsSolutionValid()) {
+                v = GetBestAdd();
+                AddVertex(v);
+                forbidlist.Add(v);
+                IncreaseFreq();
             }
         }
     }

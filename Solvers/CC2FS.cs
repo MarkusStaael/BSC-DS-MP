@@ -3,6 +3,7 @@ using BSC_DS_MP.DataStructures.Heap;
 using BSC_DS_MP.Util;
 using Microsoft.VisualBasic;
 using ScottPlot;
+using ScottPlot.Panels;
 using ScottPlot.Plottables;
 using System;
 using System.Collections;
@@ -193,7 +194,7 @@ public class CC2FS : ISolver {
                 var plt = new Plot();
                 plt.Add.Scatter(ys, xs);
                 double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-                plt.Title("Hamming distance over time");
+                plt.Title(PrintName + " - Hamming distance over time");
 
                 string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_hamming.png"));
                 plt.SavePng(path, 2000, 700);
@@ -206,7 +207,7 @@ public class CC2FS : ISolver {
                 var plt = new Plot();
                 plt.Add.Scatter(ys, xs);
                 double itps = 60 * size_plot.Count / ((double)time_plot[time_plot.Count() - 1]);
-                plt.Title("Iterations: " + size_plot.Count() + ". It/s: " + itps + ". Best: "+ best);
+                plt.Title(PrintName+" - Iterations: " + size_plot.Count() + ". It/s: " + itps + ". Best: "+ best);
 
                 string path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + ".png"));
                 plt.SavePng(path, 2000, 700);
@@ -217,7 +218,7 @@ public class CC2FS : ISolver {
                 var plt = new Plot();
                 SelectionCounts.Sort();
                 plt.Add.Bars(SelectionCounts);
-                plt.Title("Vertex Selection Frequency");
+                plt.Title(PrintName + " - Vertex Selection Frequency");
                 plt.YLabel("Times Selected");
                 var path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_Selection_Frequency.png"));
                 plt.SavePng(path, 2000, 700);
@@ -318,24 +319,29 @@ public class CC2FS : ISolver {
                 plotterHelper.AddSOTDatapoint(CandidateSol.GetSolutionCount(), sw.ElapsedMilliseconds);
             }
             iterCount++;
+            DoLoopLogic();
 
-            if (CandidateSol.IsSolutionValid()) {
-                if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
-                    BestSolution = CandidateSol.GetAsRetSol();
-                }
-                int v = GetBestRemove(forbidList: false);
-                RemoveVertex(v);
-            } else {
-                int v = GetBestRemove(forbidList: true);
-                RemoveVertex(v);
-                forbidlist.Clear();
 
-                while (!CandidateSol.IsSolutionValid() && !((CancellationToken)token).IsCancellationRequested) {
-                    v = GetBestAdd();
-                    AddVertex(v);
-                    forbidlist.Add(v);
-                    IncreaseFreq();
-                }
+        }
+    }
+
+    protected virtual void DoLoopLogic() {
+        if (CandidateSol.IsSolutionValid()) {
+            if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
+                BestSolution = CandidateSol.GetAsRetSol();
+            }
+            int v = GetBestRemove(forbidList: false);
+            RemoveVertex(v);
+        } else {
+            int v = GetBestRemove(forbidList: true);
+            RemoveVertex(v);
+            forbidlist.Clear();
+
+            while (!CandidateSol.IsSolutionValid()) {
+                v = GetBestAdd();
+                AddVertex(v);
+                forbidlist.Add(v);
+                IncreaseFreq();
             }
         }
     }
