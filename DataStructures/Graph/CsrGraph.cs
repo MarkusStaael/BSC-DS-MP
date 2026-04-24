@@ -1,12 +1,13 @@
 using System;
-
 namespace BSC_DS_MP.DataStructures.Graph;
 
 /// <summary>
 /// Compressed Sparse Row graph representation for cache-friendly neighbor iteration.
 /// Built once from an IGraph, provides ReadOnlySpan access to neighbor arrays.
+/// This representation is immutable after construction.
 /// </summary>
-internal class CsrGraph {
+/// 
+internal class CsrGraph : IGraph {
     private readonly int[] _offsets; // offsets[v] = start; offsets[n] = total edges
     private readonly int[] _edges;   // contiguous neighbor IDs
     private readonly int _n;
@@ -47,6 +48,46 @@ internal class CsrGraph {
 
     public int Degree(int v) {
         return _offsets[v + 1] - _offsets[v];
+    }
+
+    public IGraph CloneInto(IGraphFactory fac) {
+        IGraph clone = fac.Create(_n);
+        foreach (int node in GetNodes()) {
+            foreach (int neighbor in GetEdges(node)) {
+                clone.AddEdge(node, neighbor);
+            }
+        }
+
+        return clone;
+    }
+
+    public int getSize() {
+        return _n;
+    }
+
+    public void AddNode(int id) {
+        throw new NotSupportedException("CsrGraph is immutable.");
+    }
+
+    public void AddEdge(int from, int to) {
+        throw new NotSupportedException("CsrGraph is immutable.");
+    }
+
+    public IEnumerable<int> GetEdges(int node) {
+        int start = _offsets[node];
+        int end = _offsets[node + 1];
+        for (int index = start; index < end; index++) {
+            yield return _edges[index];
+        }
+    }
+
+    public void RemoveNode(int id) {
+        throw new NotSupportedException("CsrGraph is immutable.");
+    }
+
+    public IEnumerable<int> GetNodes() {
+        // the previous implementation excluded the last index; include full range
+        return Enumerable.Range(0, NodeCount);
     }
 }
 

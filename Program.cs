@@ -25,15 +25,23 @@ VerifierTest();
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
 //RunTest(new CC2FS(graph,"CC2FS"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FSWithRandom(graph, "random"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
+RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
+RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);
+RunTest(new CC2FSOpt(graph, "cc2fs cc bool"), graph, "Test: cc2fs cc bool", new AdjSetLstGraphFactory(), false,false);
+RunTest(new CC2FS(graph, "cc2fs csrGraph"), graph, "Test: CC2FS csrGraph", null, false, true);
 
 
-void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory fac, bool popup) {
+void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory? fac, bool popup, bool csrGraph) {
     Console.WriteLine("---Starting test");
+    IGraph clone;
+    if (csrGraph) {
+        clone = new CsrGraph(gr);
+    } else if (fac != null)
+        clone = gr.CloneInto(fac);
+    else
+        throw new Exception("no IGraphFactory");
 
-    IGraph clone = gr.CloneInto(fac);
-
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
     CancellationToken token = cts.Token;
 
     var ts = DateTime.Now;

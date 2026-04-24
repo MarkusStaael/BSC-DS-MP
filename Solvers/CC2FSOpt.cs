@@ -15,9 +15,9 @@ using System.Transactions;
 
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
-public class CC2FS : ISolver {
+public class CC2FSOpt : ISolver {
     protected class SimpleSol {
-        public BitArray VerticesInS;
+        public bool[] VerticesInS;
         public HashSet<int> uncoveredVertices;
         public int[] coveredCount;
         public int coveredSum;
@@ -25,7 +25,7 @@ public class CC2FS : ISolver {
         IGraph graph;
 
         public SimpleSol(IGraph graph) {
-            VerticesInS = new(graph.getSize(),false);
+            VerticesInS = new bool [graph.getSize()];
             coveredCount = new int[graph.getSize()];
             uncoveredVertices = new();
             this.graph = graph;
@@ -47,10 +47,10 @@ public class CC2FS : ISolver {
             return VerticesInS[v] == true;
         }
         private void AddToS(int v) {
-            VerticesInS.Set(v, true);
+            VerticesInS[v] = true;
         }
         private void RemoveFromS(int v) {
-            VerticesInS.Set(v, false);
+            VerticesInS[v]= false;
         }
 
         public void AddVertex(int v) {
@@ -112,7 +112,7 @@ public class CC2FS : ISolver {
         public SimpleSol Clone() {
             var ret = new SimpleSol(graph);
 
-            ret.VerticesInS = new(VerticesInS);
+            ret.VerticesInS = (bool[]) VerticesInS.Clone();
             ret.uncoveredVertices = new HashSet<int>(uncoveredVertices);
             ret.coveredSum = coveredSum;
             ret.coveredCount = (int[])coveredCount.Clone();
@@ -145,7 +145,7 @@ public class CC2FS : ISolver {
             }
         }
     }
-    protected BitArray ConfChange;        // CC2 configuration change flags
+    protected bool[] ConfChange;        // CC2 configuration change flags
     protected IGraph graph;
     protected SimpleSol CandidateSol;
     protected RetSol BestSolution;
@@ -226,7 +226,7 @@ public class CC2FS : ISolver {
         }
     }
 
-    protected int Hamming(BitArray a, BitArray b) {
+    protected int Hamming(bool[] a, BitArray b) {
         int count = 0;
         for (int i = 0; i < a.Length; i++)
             if (a[i] != b[i]) count++;
@@ -234,7 +234,7 @@ public class CC2FS : ISolver {
     }
 
     String PrintName;
-    public CC2FS(IGraph graph,String printname) {
+    public CC2FSOpt(IGraph graph,String printname) {
         PrintName = printname;
         this.graph = graph;
         forbidlist = new HashSet<int>();
@@ -276,8 +276,10 @@ public class CC2FS : ISolver {
         }
 
         // --- Initialise state ---
-        ConfChange = new(graph.getSize());
-        ConfChange.SetAll(true); // CC2-R1
+        ConfChange = new bool[graph.getSize()];
+        for(int i = 0; i < graph.getSize(); i++)
+            ConfChange[i] = true; // CC2-R1: all vertices initially have CC=true
+
         freq = new uint[graph.getSize()];
         for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
 
@@ -464,7 +466,7 @@ public class CC2FS : ISolver {
 
     protected void SetCCTrue(int v) {
         if (ConfChange[v] == false) {
-            ConfChange.Set(v, true);
+            ConfChange[v] = true;
             if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
                 AddToAddHeap(v);
             }
@@ -509,7 +511,7 @@ public class CC2FS : ISolver {
     protected void RemoveVertex(int v) {
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
-        ConfChange.Set(v, false);
+        ConfChange[v]=false;
 
         foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
