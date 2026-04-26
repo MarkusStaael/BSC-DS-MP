@@ -10,7 +10,7 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 60; // seconds
+int timelimit = 600; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -24,12 +24,14 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
+RunTest(new GreedyDecreaseKey(), graph, "Test: Greedy", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FS(graph,"CC2FS"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
-RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FSOpt(graph, "cc2fs cc bool"), graph, "Test: cc2fs cc bool", new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FS(graph, "cc2fs csrGraph"), graph, "Test: CC2FS csrGraph", null, false, true);
+//RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
+//RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);
+//RunTest(new CC2FSOpt(graph, "cc2fs cc bool"), graph, "Test: cc2fs cc bool", new AdjSetLstGraphFactory(), false,false);
 
+RunTest(new CC2FS(graph, "CC2FS 5min"), graph, "Test: CC2FS 1", null, false, true);
+RunTest(new CC2FSSA(graph, "CC2FS Stochastic 5min"), graph, "Test: CC2FS top 5 Stochastic 1", new AdjSetLstGraphFactory(), false,false);
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory? fac, bool popup, bool csrGraph) {
     Console.WriteLine("---Starting test");
