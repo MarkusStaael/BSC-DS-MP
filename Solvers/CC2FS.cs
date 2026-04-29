@@ -468,10 +468,10 @@ public class CC2FS : ISolver {
             ConfChange.Set(v, true);
             if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
                 AddToAddHeap(v);
-            }
-            if (InRemoveHeap[v]) {
-                RemoveHeap.UpdateKey(v, GetScore(v));
-            }
+            } 
+            //if (InRemoveHeap[v]) { ADDED THIS WHEN I ADDED HEAPS, I DON'T THINK IT SHOULD BE HERE BUT WILL LEAVE IT
+            //    RemoveHeap.UpdateKey(v, GetScore(v));
+            //}
         }
     }
 
