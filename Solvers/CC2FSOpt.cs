@@ -388,7 +388,7 @@ public class CC2FSOpt : ISolver {
         }
     }
 
-    protected int GetBestAdd() {
+    protected virtual int GetBestAdd() {
         while (true) {
             int target = AddHeap.RemoveMax();
             InHeap[target] = false;
@@ -410,7 +410,7 @@ public class CC2FSOpt : ISolver {
         }
     }
 
-    protected int GetBestRemove(bool forbidList) {
+    protected virtual int GetBestRemove(bool forbidList) {
 
         List<int> addAgainList = new List<int>();
 

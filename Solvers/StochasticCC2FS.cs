@@ -6,11 +6,11 @@ using System.Runtime;
 
 namespace BSC_DS_MP.Solvers;
 
-public class CC2FSSA : CC2FS {
+public class CC2FSSA : CC2FSOpt {
     public CC2FSSA(IGraph graph, string name) : base(graph, name) {
     }
 
-private static Random rng = new Random();
+private static Random rng = new Random(0); // fixed seed for reproducibility
 
 private int PickRandom(List<int> candidates) {
     return candidates[rng.Next(candidates.Count)];
