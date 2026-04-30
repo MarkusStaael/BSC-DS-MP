@@ -24,7 +24,7 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-RunTest(new GreedyDecreaseKey(), graph, "Test: Greedy (Control)", new AdjSetLstGraphFactory(), false,false);
+RunTest(new GreedyDecreaseKey(graph, null), graph, "Test: Greedy (Control)", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FS(graph,"CC2FS"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false);
 //RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);

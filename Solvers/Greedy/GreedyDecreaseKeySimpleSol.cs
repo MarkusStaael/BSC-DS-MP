@@ -1,17 +1,11 @@
-using BSC_DS_MP.DataStructures.Graph;
+﻿using BSC_DS_MP.DataStructures.Graph;
 using BSC_DS_MP.DataStructures.Heap;
+using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Formats.Asn1;
-using System.Numerics;
 using System.Text;
-using System.Xml.Linq;
-
-namespace BSC_DS_MP.Solvers;
-
-public class GreedyDecreaseKey : ISolver {
+public class GreedyDecreaseKeySimpleSol {
     private int[] covered;
     IGraph graph;
     private bool IsCovered(int vertex) {
@@ -21,17 +15,18 @@ public class GreedyDecreaseKey : ISolver {
         covered[vertex]++;
     }
 
-    public GreedyDecreaseKey(IGraph graph,int[]? covered) {
+    public GreedyDecreaseKeySimpleSol(IGraph graph, int[]? covered) {
         this.graph = graph;
-        if(covered != null) {
+        if (covered != null) {
             this.covered = covered;
         } else {
             this.covered = new int[graph.getSize()];
         }
     }
-    public ISolution Solve(IGraph graph, CancellationToken? token) {
+    public SimpleSol Solve(IGraph graph, CancellationToken? token) {
         int size = graph.getSize();
-        ISolution sol = new HashSetSolution(size);
+        SimpleSol sol = new SimpleSol(graph);
+        sol.coveredCount = covered;
         int coveredCount = 0;
         int[] coverage = new int[size];
 
@@ -50,7 +45,7 @@ public class GreedyDecreaseKey : ISolver {
             Console.Write(coverage[i] + ",");
         }
         Console.WriteLine();*/
-        
+
         // Greedy selection until all vertices are covered
         int totalRemovals = 0;
         int skipCount = 0;
