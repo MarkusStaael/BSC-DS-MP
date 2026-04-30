@@ -154,7 +154,7 @@ public class CC2FS : ISolver {
         for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
 
         {
-            ISolution init = new GreedyDecreaseKey(graph,null).Solve(graph, null);
+            ISolution init = new GreedyDecreaseKey().Solve(graph, null);
             CandidateSol = new SimpleSol(graph);
             CandidateSol.InitFromSol(init);
         }

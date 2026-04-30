@@ -117,8 +117,10 @@ public class CC2FSGraphReduce : ISolver {
 
         GraphReducer = new GraphReducer();
         int extra_vertices  = 0; int[] reducedCoverage;
+        int originalSize = graph.getSize();
 
         (graph, reducedCoverage, extra_vertices) = GraphReducer.Reduce(graph);
+        Console.WriteLine("Reduced graph from " + originalSize + " to " + graph.getSize() + " vertices. Extra vertices: " + extra_vertices);
 
         this.graph = graph;
         forbidlist = new HashSet<int>();
@@ -183,7 +185,7 @@ public class CC2FSGraphReduce : ISolver {
 
         plotterHelper.Print(BestSolution.count);
 
-        return BestSolution;
+        return GraphReducer.Reconstruct(BestSolution);
     }
 
     protected void SolveLoop(CancellationToken? token) {

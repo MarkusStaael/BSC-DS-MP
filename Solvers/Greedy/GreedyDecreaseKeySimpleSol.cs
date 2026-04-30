@@ -27,62 +27,46 @@ public class GreedyDecreaseKeySimpleSol {
         int size = graph.getSize();
         SimpleSol sol = new SimpleSol(graph);
         sol.coveredCount = covered;
-        int coveredCount = 0;
-        int[] coverage = new int[size];
+        for (int i = 0; i < covered.Length; i++) {
+            if (covered[i] > 0) {
+                sol.coveredSum += 1;
+            }
+        }
 
-        // store current coverage for each node (uncovered neighbours + self)
+        // score[v] = number of undominated vertices in closed neighbourhood N[v]
+        int[] score = new int[size];
+        bool[] inHeap = new bool[size];
         var heap = new IndexedMaxHeap(size);
 
-        // initialize heap with coverage values
         foreach (int node in graph.GetNodes()) {
-            int cov = graph.GetEdges(node).Count() + 1;
-            coverage[node] = cov;
-            heap.Insert(node, cov);
+            int s = IsCovered(node) ? 0 : 1; // self
+            foreach (int nbr in graph.GetEdges(node))
+                if (!IsCovered(nbr)) s++;
+            score[node] = s;
+            heap.Insert(node, s);
+            inHeap[node] = true;
         }
-        // Console.WriteLine($"Initial heap size after insertion: {heap.Size()}");
-        // optionally peek at coverage values of first few nodes
-        /*for (int i = 0; i < Math.Min(10, coverage.Length); i++) {
-            Console.Write(coverage[i] + ",");
-        }
-        Console.WriteLine();*/
 
-        // Greedy selection until all vertices are covered
-        int totalRemovals = 0;
-        int skipCount = 0;
-        while (!heap.IsEmpty() && coveredCount < size) {
-            int selectedNode = heap.RemoveMax();
-            totalRemovals++;
+        while (!heap.IsEmpty() && !sol.IsSolutionValid()) {
+            int v = heap.RemoveMax();
+            inHeap[v] = false;
 
-            // lazy skip (should not occur)
-            if (IsCovered(selectedNode)) {
-                skipCount++;
-                continue;
-            }
+            if (IsCovered(v)) continue; // stale — already dominated by a prior selection
 
-            // gather nodes that will become covered this round (selected + its neighbors)
-            var newlyCovered = new List<int>();
-            if (!IsCovered(selectedNode)) {
-                IncreaseCoverage(selectedNode);
-                coveredCount++;
-                newlyCovered.Add(selectedNode);
-                sol.AddVertex(selectedNode);
-            }
+            // Collect newly dominated vertices BEFORE AddVertex updates covered[]
+            var newlyDominated = new List<int>();
+            if (!IsCovered(v)) newlyDominated.Add(v);
+            foreach (int nbr in graph.GetEdges(v))
+                if (!IsCovered(nbr)) newlyDominated.Add(nbr);
 
-            foreach (int neighbor in graph.GetEdges(selectedNode)) {
-                if (!IsCovered(neighbor)) {
-                    IncreaseCoverage(selectedNode);
-                    coveredCount++;
-                    newlyCovered.Add(neighbor);
-                }
-            }
+            sol.AddVertex(v);
 
-            // for each node that just became covered, decrement coverage of its uncovered neighbours
-            foreach (int c in newlyCovered) {
-                foreach (int nbr in graph.GetEdges(c)) {
-                    if (!IsCovered(nbr)) {
-                        coverage[nbr]--;
-                        heap.DecreaseKey(nbr, coverage[nbr]);
-                    }
+            // For each vertex that just became dominated, decrement score of its neighbours
+            foreach (int d in newlyDominated) {
+                foreach (int nbr in graph.GetEdges(d)) {
+                    score[nbr]--;
+                    if (inHeap[nbr])
+                        heap.UpdateKey(nbr, score[nbr]);
                 }
             }
         }

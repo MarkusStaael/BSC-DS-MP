@@ -12,30 +12,14 @@ using System.Xml.Linq;
 namespace BSC_DS_MP.Solvers;
 
 public class GreedyDecreaseKey : ISolver {
-    private int[] covered;
-    IGraph graph;
-    private bool IsCovered(int vertex) {
-        return covered[vertex] >= 1;
-    }
-    private void IncreaseCoverage(int vertex) {
-        covered[vertex]++;
-    }
-
-    public GreedyDecreaseKey(IGraph graph,int[]? covered) {
-        this.graph = graph;
-        if(covered != null) {
-            this.covered = covered;
-        } else {
-            this.covered = new int[graph.getSize()];
-        }
-    }
     public ISolution Solve(IGraph graph, CancellationToken? token) {
         int size = graph.getSize();
         ISolution sol = new HashSetSolution(size);
+        BitArray covered = new BitArray(size, false);
         int coveredCount = 0;
-        int[] coverage = new int[size];
 
         // store current coverage for each node (uncovered neighbours + self)
+        int[] coverage = new int[size];
         var heap = new IndexedMaxHeap(size);
 
         // initialize heap with coverage values
@@ -59,23 +43,23 @@ public class GreedyDecreaseKey : ISolver {
             totalRemovals++;
 
             // lazy skip (should not occur)
-            if (IsCovered(selectedNode)) {
+            if (covered[selectedNode]) {
                 skipCount++;
                 continue;
             }
 
             // gather nodes that will become covered this round (selected + its neighbors)
             var newlyCovered = new List<int>();
-            if (!IsCovered(selectedNode)) {
-                IncreaseCoverage(selectedNode);
+            if (!covered[selectedNode]) {
+                covered[selectedNode] = true;
                 coveredCount++;
                 newlyCovered.Add(selectedNode);
                 sol.AddVertex(selectedNode);
             }
 
             foreach (int neighbor in graph.GetEdges(selectedNode)) {
-                if (!IsCovered(neighbor)) {
-                    IncreaseCoverage(selectedNode);
+                if (!covered[neighbor]) {
+                    covered[neighbor] = true;
                     coveredCount++;
                     newlyCovered.Add(neighbor);
                 }
@@ -84,13 +68,33 @@ public class GreedyDecreaseKey : ISolver {
             // for each node that just became covered, decrement coverage of its uncovered neighbours
             foreach (int c in newlyCovered) {
                 foreach (int nbr in graph.GetEdges(c)) {
-                    if (!IsCovered(nbr)) {
+                    if (!covered[nbr]) {
                         coverage[nbr]--;
                         heap.DecreaseKey(nbr, coverage[nbr]);
                     }
                 }
             }
         }
+
+        // debugging output
+        // Console.WriteLine($"GreedyNoUpdate removed {totalRemovals} nodes (skipped {skipCount}) and covered {coveredCount}/{size}");
+
+        // fallback: should not be necessary with the indexed heap, but keep it just in case
+        /*if (coveredCount < size) {
+            for (int v = 0; v < size && coveredCount < size; v++) {
+                if (!covered[v]) {
+                    sol.AddVertex(v);
+                    covered[v] = true;
+                    coveredCount++;
+                    foreach (int nbr in graph.GetEdges(v)) {
+                        if (!covered[nbr]) {
+                            covered[nbr] = true;
+                            coveredCount++;
+                        }
+                    }
+                }
+            }
+        }*/
 
         return sol;
     }
