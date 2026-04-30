@@ -34,14 +34,14 @@ public class GraphReducer : IGraphReducer {
             for (int v = 0; v < n; v++) {
                 if (removed[v]) continue;
 
-                // Rule 1: dominated node — safe to remove from graph
-                if (dominated[v]) {
-                    removed[v] = true;
-                    foreach (int u in adj[v]) adj[u].Remove(v);
-                    adj[v].Clear();
-                    changed = true;
-                    continue;
-                }
+                //// Rule 1: dominated node — safe to remove from graph
+                //if (dominated[v]) {
+                //    removed[v] = true;
+                //    foreach (int u in adj[v]) adj[u].Remove(v);
+                //    adj[v].Clear();
+                //    changed = true;
+                //    continue;
+                //}
 
                 // Rule 2: isolated undominated node — must cover itself
                 if (adj[v].Count == 0) {
