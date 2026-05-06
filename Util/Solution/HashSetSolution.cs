@@ -15,6 +15,10 @@ public class HashSetSolution : ISolution {
         vertices.Add(v);
     }
 
+    public void RemoveVertex(int v) {
+        vertices.Remove(v);
+    }
+
     public bool Contains(int v) {
         return vertices.Contains(v);
     }
