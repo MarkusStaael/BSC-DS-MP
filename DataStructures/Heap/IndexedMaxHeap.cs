@@ -138,6 +138,14 @@ namespace BSC_DS_MP.DataStructures.Heap
             HeapifyUp(pos);
         }
 
+        public void AdjustKey(int node, int delta) {
+            int pos = _position[node];
+            if (pos == -1) return;
+            _key[node] += delta;
+            if (delta > 0) HeapifyUp(pos);
+            else if (delta < 0) HeapifyDown(pos);
+        }
+
         private void HeapifyDown(int idx)
         {
             while (true)
