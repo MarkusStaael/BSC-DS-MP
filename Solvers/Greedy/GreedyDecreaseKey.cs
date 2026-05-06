@@ -22,18 +22,12 @@ public class GreedyDecreaseKey : ISolver {
         int[] coverage = new int[size];
         var heap = new IndexedMaxHeap(size);
 
-        // initialize heap with coverage values
+        // initialize keys for heap with coverage values
         foreach (int node in graph.GetNodes()) {
             int cov = graph.GetEdges(node).Count() + 1;
             coverage[node] = cov;
-            heap.Insert(node, cov);
         }
-        // Console.WriteLine($"Initial heap size after insertion: {heap.Size()}");
-        // optionally peek at coverage values of first few nodes
-        /*for (int i = 0; i < Math.Min(10, coverage.Length); i++) {
-            Console.Write(coverage[i] + ",");
-        }
-        Console.WriteLine();*/
+        heap.MakeHeap(coverage);
         
         // Greedy selection until all vertices are covered
         int totalRemovals = 0;
