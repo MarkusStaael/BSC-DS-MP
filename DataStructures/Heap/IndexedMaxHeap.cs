@@ -11,6 +11,7 @@ namespace BSC_DS_MP.DataStructures.Heap
     {
         private readonly int[] _heap;      // 1-based binary heap of node ids
         private readonly int[] _key;       // _key[node] = current key value
+        private readonly uint[] _age;      // _age[node] = insertion timestamp (lower = older = preferred on tie)
         private readonly int[] _position;  // _position[node] = index in _heap (1..size) or -1 if absent
         private int _size;
 
@@ -18,6 +19,7 @@ namespace BSC_DS_MP.DataStructures.Heap
         {
             _heap = new int[capacity + 1];
             _key = new int[capacity];
+            _age = new uint[capacity];
             _position = new int[capacity];
             for (int i = 0; i < capacity; i++)
                 _position[i] = -1;
@@ -43,13 +45,14 @@ namespace BSC_DS_MP.DataStructures.Heap
                 HeapifyDown(i);
         }
 
-        public void Insert(int node, int key)
+        public void Insert(int node, int key, uint age = 0)
         {
             if (_position[node] != -1)
                 throw new InvalidOperationException("node already in heap");
             _size++;
             _heap[_size] = node;
             _key[node] = key;
+            _age[node] = age;
             _position[node] = _size;
             HeapifyUp(_size);
         }
@@ -115,12 +118,21 @@ namespace BSC_DS_MP.DataStructures.Heap
                 HeapifyDown(pos);
         }
 
+        // Returns true if nodeA should be above nodeB in the max-heap:
+        // higher score wins; on a tie, smaller age wins (older node preferred).
+        private bool IsGreater(int nodeA, int nodeB)
+        {
+            int ka = _key[nodeA], kb = _key[nodeB];
+            if (ka != kb) return ka > kb;
+            return _age[nodeA] < _age[nodeB];
+        }
+
         private void HeapifyUp(int idx)
         {
             while (idx > 1)
             {
                 int parent = idx / 2;
-                if (_key[_heap[idx]] <= _key[_heap[parent]])
+                if (!IsGreater(_heap[idx], _heap[parent]))
                     break;
                 Swap(idx, parent);
                 idx = parent;
@@ -153,9 +165,9 @@ namespace BSC_DS_MP.DataStructures.Heap
                 int left = idx * 2;
                 int right = left + 1;
                 int largest = idx;
-                if (left <= _size && _key[_heap[left]] > _key[_heap[largest]])
+                if (left <= _size && IsGreater(_heap[left], _heap[largest]))
                     largest = left;
-                if (right <= _size && _key[_heap[right]] > _key[_heap[largest]])
+                if (right <= _size && IsGreater(_heap[right], _heap[largest]))
                     largest = right;
                 if (largest == idx) break;
                 Swap(idx, largest);

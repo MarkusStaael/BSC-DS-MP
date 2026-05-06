@@ -156,6 +156,8 @@ public class CC2FSOpt : ISolver {
     protected IndexedMaxHeap RemoveHeap;
     protected BitArray InHeap;
     protected BitArray InRemoveHeap;
+    protected uint[] _timestamp;
+    protected uint _stepCount = 0;
     protected PlotterHelper plotterHelper;
     protected class PlotterHelper {
         public double[] SelectionCounts;
@@ -282,6 +284,7 @@ public class CC2FSOpt : ISolver {
 
         freq = new uint[graph.getSize()];
         for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
+        _timestamp = new uint[graph.getSize()];
 
         {
             ISolution init = new GreedyDecreaseKey().Solve(graph, null);
@@ -434,7 +437,7 @@ public class CC2FSOpt : ISolver {
 
     protected void AddToAddHeap(int v) {
         InHeap[v] = true;
-        AddHeap.Insert(v, GetScore(v));
+        AddHeap.Insert(v, GetScore(v), _timestamp[v]);
     }
 
     protected void AddToRemoveHeap(int v) {
@@ -443,7 +446,7 @@ public class CC2FSOpt : ISolver {
 
         //if (score < 0) Console.WriteLine("Added " + v + " to removeHeap @ " + score);
 
-        RemoveHeap.Insert(v, score);
+        RemoveHeap.Insert(v, score, _timestamp[v]);
     }
 
     protected void UpdateHeapScores(int v) {
@@ -478,6 +481,7 @@ public class CC2FSOpt : ISolver {
     }
 
     protected void AddVertex(int v) {
+        _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.AddVertex(v);
 
@@ -526,6 +530,7 @@ public class CC2FSOpt : ISolver {
     }
 
     protected void RemoveVertex(int v) {
+        _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
         ConfChange[v] = false;
