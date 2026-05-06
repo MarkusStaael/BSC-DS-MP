@@ -10,7 +10,7 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 60; // seconds
+int timelimit = 5; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -24,9 +24,9 @@ VerifierTest();
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-//RunTest(new GreedyDecreaseKey(graph, null), graph, "Test: Greedy (Control)", new AdjSetLstGraphFactory(), false,false);
+//RunTest(new GreedyDecreaseKey(), graph, "Test: Greedy (Control)", new AdjSetLstGraphFactory(), false,false);
 RunTest(new CC2FS(graph,"CC2FS"),                       graph, "Test: CC2FS",       new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FSGraphReduce(graph, "CC2FS reduc"),     graph, "Test: CC2FS reduc", new AdjSetLstGraphFactory(), false,false);
+//RunTest(new CC2FSGraphReduce(graph, "CC2FS reduc"),     graph, "Test: CC2FS reduc", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);
 //RunTest(new CC2FSOpt(graph, "cc2fs cc bool"), graph, "Test: cc2fs cc bool", new AdjSetLstGraphFactory(), false,false);

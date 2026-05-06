@@ -27,6 +27,22 @@ namespace BSC_DS_MP.DataStructures.Heap
         public bool IsEmpty() => _size == 0;
         public int Size() => _size;
 
+        public void MakeHeap(int[] keys)
+        {
+            int n = keys.Length;
+            if (n > _key.Length)
+                throw new ArgumentException("keys array too large for heap capacity");
+            _size = n;
+            for (int node = 0; node < n; node++)
+            {
+                _key[node] = keys[node];
+                _heap[node + 1] = node;
+                _position[node] = node + 1;
+            }
+            for (int i = n / 2; i >= 1; i--)
+                HeapifyDown(i);
+        }
+
         public void Insert(int node, int key)
         {
             if (_position[node] != -1)
