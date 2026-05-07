@@ -27,9 +27,8 @@ public class CC2FSPerbutation : CC2FS {
     public double GetPerturbationProbability() {
         return 0.0001;
     }
-    Random _random;
+    Random _random = new Random();
     public CC2FSPerbutation(AdjLstWithSolGraph graph, String printname, CancellationToken token) : base(graph, printname, token) {
-        _random = new Random();
     }
     protected void Perturb() {
         // Step 9: randomly select one vertex from RemoveHeap (all entries are in S)

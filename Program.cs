@@ -20,6 +20,9 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // TESTS
 RunTest(new CC2FSFactory(),"CC2FS", new AdjSetLstGraphFactory());
+RunTest(new CC2FSPerturbationFactory(),"P-CC2FS", new AdjSetLstGraphFactory());
+
+
 
 
 void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {

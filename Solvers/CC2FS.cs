@@ -340,6 +340,13 @@ public class CC2FS : ISolver {
         if (InRemoveHeap[v]) RemoveHeap.AdjustKey(v, delta);
     }
 
+    // A vertex is in exactly one heap at a time — use this when the delta applies
+    // regardless of which heap the vertex is in, avoiding a redundant second check.
+    protected void AdjustScore(int v, int delta) {
+        if (InAddHeap[v]) AddHeap.AdjustKey(v, delta);
+        else if (InRemoveHeap[v]) RemoveHeap.AdjustKey(v, delta);
+    }
+
     protected void SetCCTrue(int v) {
         long _t = Stopwatch.GetTimestamp(); prof.CallsSetCCTrue++;
         if (ConfChange[v] == false) {
@@ -366,11 +373,9 @@ public class CC2FS : ISolver {
             int cu = graph.CoveredCount[u];
             if (cu == 1) {                              
                 int fU = (int)freq[u];
-                AdjustAddScore(u, -fU);
-                AdjustRemoveScore(u, -fU);
+                AdjustScore(u, -fU);
                 foreach (int y in graph.GetEdges(u)) {
-                    AdjustAddScore(y, -fU);
-                    AdjustRemoveScore(y, -fU);
+                    AdjustScore(y, -fU);
                 }
             } else if (cu == 2) {                       
                 int fU = (int)freq[u];
@@ -386,8 +391,7 @@ public class CC2FS : ISolver {
         if (cv == 1) {                                 
             int fV = (int)freq[v];
             foreach (int y in graph.GetEdges(v)) {
-                AdjustAddScore(y, -fV);
-                AdjustRemoveScore(y, -fV);
+                AdjustScore(y, -fV);
             }
         } else if (cv == 2) {                           
             int fV = (int)freq[v];
@@ -416,11 +420,9 @@ public class CC2FS : ISolver {
             int cu = graph.CoveredCount[u];
             if (cu == 0) {                            
                 int fU = (int)freq[u];
-                AdjustAddScore(u, +fU);
-                AdjustRemoveScore(u, +fU);
+                AdjustScore(u, +fU);
                 foreach (int y in graph.GetEdges(u)) {
-                    AdjustAddScore(y, +fU);
-                    AdjustRemoveScore(y, +fU);
+                    AdjustScore(y, +fU);
                 }
             } else if (cu == 1) {                      
                 int fU = (int)freq[u];
@@ -435,8 +437,7 @@ public class CC2FS : ISolver {
         if (cv == 0) {                                  
             int fV = (int)freq[v];
             foreach (int y in graph.GetEdges(v)) {
-                AdjustAddScore(y, +fV);
-                AdjustRemoveScore(y, +fV);
+                AdjustScore(y, +fV);
             }
         } else if (cv == 1) {                          
             int fV = (int)freq[v];
@@ -450,14 +451,8 @@ public class CC2FS : ISolver {
         prof.TicksRemoveVertex += Stopwatch.GetTimestamp() - _t;
     }
 
-    int largest = 0;
     protected void IncreaseFreq() {
         long _t = Stopwatch.GetTimestamp(); prof.CallsIncreaseFreq++;
-        if(graph.UncoveredVertices.Count > largest) {
-            largest = graph.UncoveredVertices.Count;
-            Console.WriteLine("Count: " + largest);
-        }
-
 
         // Increment freq for every uncovered vertex and accumulate the per-vertex
         // add-score delta in one pass.  score(u) increases by the number of uncovered
