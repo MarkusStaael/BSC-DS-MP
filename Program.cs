@@ -12,15 +12,16 @@ bool toFile = false;
 bool useReduction = true;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 60; // seconds
+int timelimit = 1200; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // TESTS
-RunTest(new CC2FSFactory(),"CC2FS", new AdjSetLstGraphFactory());
-RunTest(new CC2FSPerturbationFactory(),"P-CC2FS", new AdjSetLstGraphFactory());
+RunTest(new CC2FSFactory(),"CC2FS 20 min ", new AdjSetLstGraphFactory());
+
+//RunTest(new CC2FSPerturbationFactory(),"P-CC2FS", new AdjSetLstGraphFactory());
 
 
 
@@ -33,12 +34,12 @@ void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
     AdjLstWithSolGraph graph;
     if (useReduction) {
         graph = reduction.Reduce(Reader.DominatingSetReader(path));
-        Console.WriteLine("Reduced graph: " + reduction.OriginalSize + " -> " + reduction.ReducedSize + " vertices, " + reduction.ForcedVertices.Count + " forced into DS during reduction");
+        //Console.WriteLine("Reduced graph: " + reduction.OriginalSize + " -> " + reduction.ReducedSize + " vertices, " + reduction.ForcedVertices.Count + " forced into DS during reduction");
     } else {
         graph = Reader.DominatingSetReader(path);
-        Console.WriteLine("Running without reduction, graph size: " + graph.getSize());
+        //Console.WriteLine("Running without reduction, graph size: " + graph.getSize());
     }
-    Console.WriteLine("New covered vertices: " + graph.GetCoveredSum());
+    //Console.WriteLine("New covered vertices: " + graph.GetCoveredSum());
     Console.WriteLine("Starting now "+DateTime.Now);
 
     CancellationToken token = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit)).Token;
@@ -46,13 +47,13 @@ void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
     ISolution reducedResult = solverFactory.Create(graph, token, id).GetSolution();
     ISolution result;
     if (useReduction) {
-        Console.WriteLine("CC2FS found " + reducedResult.Count() + " vertices on reduced graph, " + reduction.ForcedVertices.Count + " forced, reconstructing...");
+        //Console.WriteLine("CC2FS found " + reducedResult.Count() + " vertices on reduced graph, " + reduction.ForcedVertices.Count + " forced, reconstructing...");
         result = reduction.Reconstruct(reducedResult);
     } else {
         result = reducedResult;
     }
     var dt = (DateTime.Now - ts);
-    Console.WriteLine("Finished, now verifying");
+    //Console.WriteLine("Finished, now verifying");
     bool passed = Verifier.Verify(result, Reader.DominatingSetReader(path));
     int lazycount = 0;
 
@@ -105,7 +106,7 @@ void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
         }
         Console.WriteLine("Result written to: " + filePath);
     } else {
-        Console.WriteLine("toFile is set to false, skipping file writing.");
+        //Console.WriteLine("toFile is set to false, skipping file writing.");
     }
 }
 

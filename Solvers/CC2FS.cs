@@ -143,10 +143,10 @@ public class CC2FS : ISolver {
             RemoveHeap      = new(size);
             InAddHeap          = new(size, false);
             InRemoveHeap    = new(size, false);
-            plotterHelper   = new(size, printname);
+            // plotterHelper   = new(size, printname);
             ConfChange          = new bool[size];
             freq                = new uint[size];
-            prof                = new Profiler();
+            // prof                = new Profiler();
             _incFreqDelta       = new int[size];
             _incFreqAffected    = new List<int>(size);
         }
@@ -207,8 +207,8 @@ public class CC2FS : ISolver {
 
         // START
         SolveLoop(token);
-        prof.Print();
-        plotterHelper.Print(BestSolution.count);
+        // prof.Print();
+        // plotterHelper.Print(BestSolution.count);
     }
     public ISolution GetSolution() => BestSolution;
 
@@ -217,13 +217,13 @@ public class CC2FS : ISolver {
         uint iterCount = 0;
         RetSol prevHam = graph.GetAsRetSol();
         while (!token.IsCancellationRequested) {
-            if (iterCount % 10 == 0) { // CAN OPTIMIZE?
-                if(iterCount % 1000 == 0) {
-                    plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
-                    prevHam = graph.GetAsRetSol();
-                }
-                plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
-            }
+            // if (iterCount % 10 == 0) { // CAN OPTIMIZE?
+            //     if(iterCount % 1000 == 0) {
+            //         plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
+            //         prevHam = graph.GetAsRetSol();
+            //     }
+            //     plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
+            // }
             iterCount++;
             DoLoopLogic();
         }
@@ -275,19 +275,19 @@ public class CC2FS : ISolver {
     }
 
     protected virtual int GetBestAdd() {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestAdd++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestAdd++;
         while (true) {
             int target = AddHeap.RemoveMax();
             InAddHeap[target] = false;
             if (graph.SolutionContains(target)) continue;
             if (!ConfChange[target]) continue;
-            prof.TicksGetBestAdd += Stopwatch.GetTimestamp() - _t;
+            // prof.TicksGetBestAdd += Stopwatch.GetTimestamp() - _t;
             return target;
         }
     }
 
     protected virtual int GetBestRemove(bool forbidList) {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestRemove++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestRemove++;
         List<int> addAgainList = new List<int>();
 
         while(true) {
@@ -301,7 +301,7 @@ public class CC2FS : ISolver {
                     AddToRemoveHeap(u);
                 }
                 InRemoveHeap[target] = false;
-                prof.TicksGetBestRemove += Stopwatch.GetTimestamp() - _t;
+                // prof.TicksGetBestRemove += Stopwatch.GetTimestamp() - _t;
                 return target; 
             }
         }
@@ -348,7 +348,7 @@ public class CC2FS : ISolver {
     }
 
     protected void SetCCTrue(int v) {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsSetCCTrue++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsSetCCTrue++;
         if (ConfChange[v] == false) {
             ConfChange[v] = true;
             if (!graph.SolutionContains(v) && !InAddHeap[v]) {
@@ -358,13 +358,13 @@ public class CC2FS : ISolver {
                 RemoveHeap.UpdateKey(v, GetScore(v));
             }
         }
-        prof.TicksSetCCTrue += Stopwatch.GetTimestamp() - _t;
+        // prof.TicksSetCCTrue += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void AddVertex(int v) {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
         _timestamp[v] = ++_stepCount;
-        plotterHelper.SelectionCounts[v] += 1;
+        // plotterHelper.SelectionCounts[v] += 1;
         graph.AddVertexToSol(v);
 
 
@@ -406,13 +406,13 @@ public class CC2FS : ISolver {
         // Ensure v is out of AddHeap, then add to RemoveHeap
         if (InAddHeap[v]) { AddHeap.Remove(v); InAddHeap[v] = false; }
         AddToRemoveHeap(v);
-        prof.TicksAddVertex += Stopwatch.GetTimestamp() - _t;
+        // prof.TicksAddVertex += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void RemoveVertex(int v) {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
         _timestamp[v] = ++_stepCount;
-        plotterHelper.SelectionCounts[v] += 1;
+        // plotterHelper.SelectionCounts[v] += 1;
         graph.RemoveVertexFromSol(v);
         ConfChange[v] = false;
 
@@ -448,11 +448,11 @@ public class CC2FS : ISolver {
 
         foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
-        prof.TicksRemoveVertex += Stopwatch.GetTimestamp() - _t;
+        // prof.TicksRemoveVertex += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void IncreaseFreq() {
-        long _t = Stopwatch.GetTimestamp(); prof.CallsIncreaseFreq++;
+        // long _t = Stopwatch.GetTimestamp(); prof.CallsIncreaseFreq++;
 
         // Increment freq for every uncovered vertex and accumulate the per-vertex
         // add-score delta in one pass.  score(u) increases by the number of uncovered
@@ -474,7 +474,7 @@ public class CC2FS : ISolver {
         }
         _incFreqAffected.Clear();
 
-        prof.TicksIncreaseFreq += Stopwatch.GetTimestamp() - _t;
+        // prof.TicksIncreaseFreq += Stopwatch.GetTimestamp() - _t;
     }
 }
 
