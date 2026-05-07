@@ -2,6 +2,7 @@
 using BSC_DS_MP.Reading;
 using BSC_DS_MP.Solvers;
 using BSC_DS_MP.Util;
+using BSC_DS_MP.Util.Reduction;
 using BSC_DS_MP.Verifier;
 using System.Diagnostics;
 
@@ -10,81 +11,70 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 300; // seconds
+int timelimit = 60; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
-// Tests 
-//VerifierTest();
-
-
 // TESTS
-
-IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
-
-RunTest(new CC2FS(graph, "CC2FS"),              graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false, false);
-RunTest(new CC2FSPerbutation(graph, "CC2FS-P"), graph, "Test: CC2FS-p", new AdjSetLstGraphFactory(), false, false);
+RunTest(new CC2FSFactory(),"CC2FS", new AdjSetLstGraphFactory());
 
 
-void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory? fac, bool popup, bool csrGraph) {
+void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
     Console.WriteLine("---Preparing test \"" + id + "\" ---");
-    IGraph clone;
-    if (csrGraph) {
-        clone = new CsrGraph(gr);
-    } else if (fac != null)
-        clone = gr.CloneInto(fac);
-    else
-        throw new Exception("no IGraphFactory");
 
+    MDSReduction reduction = new MDSReduction();
+    AdjLstWithSolGraph graph = reduction.Reduce(Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path));
+    Console.WriteLine("Reduced graph: " + reduction.OriginalSize + " -> " + reduction.ReducedSize + " vertices, " + reduction.ForcedVertices.Count + " forced into DS during reduction");
+    Console.WriteLine("New covered vertices: " + graph.GetCoveredSum());
     Console.WriteLine("Starting now "+DateTime.Now);
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
-    CancellationToken token = cts.Token;
 
+    CancellationToken token = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit)).Token;
     var ts = DateTime.Now;
-    ISolution result = solver.Solve(clone, token);
+    ISolution reducedResult = solverFactory.Create(graph, token, id).GetSolution();
+    Console.WriteLine("CC2FS found " + reducedResult.Count() + " vertices on reduced graph, " + reduction.ForcedVertices.Count + " forced, reconstructing...");
+    ISolution result = reduction.Reconstruct(reducedResult);
     var dt = (DateTime.Now - ts);
-
-    bool passed = Verifier.Verify(result, gr);
+    Console.WriteLine("Finished, now verifying");
+    bool passed = Verifier.Verify(result, Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path));
     int lazycount = 0;
 
     Console.WriteLine("Test \"" + id + "\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: " + passed);
-    if (!passed) {
-        // report the actual vertices in the solution as well
-        var solList = new List<int>(result.GetEnumerator());
-        solList.Sort();
-        Console.WriteLine("Solution vertices count: " + solList.Count + ", min=" + (solList.Count > 0 ? solList[0].ToString() : "N/A") + ", max=" + (solList.Count > 0 ? solList[^1].ToString() : "N/A"));
-        Console.WriteLine("First 20 solution nodes: " + string.Join(",", solList.Take(20)));
-
-        // print which nodes remain uncovered
-        var coveredSet = new HashSet<int>();
-        foreach (int node in solList) {
-            coveredSet.Add(node);
-            foreach (int nbr in gr.GetEdges(node)) coveredSet.Add(nbr);
-        }
-        var missing = new List<int>();
-        for (int v = 0; v < gr.getSize(); v++) {
-            if (!coveredSet.Contains(v)) missing.Add(v);
-        }
-        Console.WriteLine("Uncovered nodes (0-based): " + string.Join(",", missing.Take(200)) + (missing.Count > 200 ? ",..." : ""));
-        Console.WriteLine("Total uncovered count: " + missing.Count);
-    }
-    if (printResult) {
-        Console.WriteLine("Result: ");
-        foreach (int i in result.GetEnumerator()) {
-            Console.Write((i + 1) + ", ");
-        }
-    }
-    if (popup) {
-        string ppath = Path.Combine(AppContext.BaseDirectory, "quickstart.png");
-
-        Process.Start(new ProcessStartInfo {
-            FileName = ppath,
-            UseShellExecute = true
-        });
-    }
-
+    //if (!passed) {
+    //    // report the actual vertices in the solution as well
+    //    var solList = new List<int>(result.GetEnumerator());
+    //    solList.Sort();
+    //    Console.WriteLine("Solution vertices count: " + solList.Count + ", min=" + (solList.Count > 0 ? solList[0].ToString() : "N/A") + ", max=" + (solList.Count > 0 ? solList[^1].ToString() : "N/A"));
+    //    Console.WriteLine("First 20 solution nodes: " + string.Join(",", solList.Take(20)));
+    //
+    //    // print which nodes remain uncovered
+    //    var coveredSet = new HashSet<int>();
+    //    foreach (int node in solList) {
+    //        coveredSet.Add(node);
+    //        foreach (int nbr in clone.GetEdges(node)) coveredSet.Add(nbr);
+    //    }
+    //    var missing = new List<int>();
+    //    for (int v = 0; v < clone.getSize(); v++) {
+    //        if (!coveredSet.Contains(v)) missing.Add(v);
+    //    }
+    //    Console.WriteLine("Uncovered nodes (0-based): " + string.Join(",", missing.Take(200)) + (missing.Count > 200 ? ",..." : ""));
+    //    Console.WriteLine("Total uncovered count: " + missing.Count);
+    //}
+    //if (printResult) {
+    //    Console.WriteLine("Result: ");
+    //    foreach (int i in result.GetEnumerator()) {
+    //        Console.Write((i + 1) + ", ");
+    //    }
+    //}
+    //if (popup) {
+    //    string ppath = Path.Combine(AppContext.BaseDirectory, "quickstart.png");
+    //
+    //    Process.Start(new ProcessStartInfo {
+    //        FileName = ppath,
+    //        UseShellExecute = true
+    //    });
+    //}
     if (toFile) {
         Console.WriteLine("Writing to file...");
         string outputDir = Path.Combine(projroot, "SolvedOutput");

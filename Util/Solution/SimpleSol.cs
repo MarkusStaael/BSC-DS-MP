@@ -17,10 +17,16 @@ public class SimpleSol {
 
     public SimpleSol(IGraph graph) {
         VerticesInS = new bool[graph.getSize()]; // Default of value is false
-        coveredCount = new int[graph.getSize()];
-        uncoveredVertices = new();
+        coveredCount = graph.CoveredCount;
         this.graph = graph;
+        // Initialize coveredSum and uncoveredVertices from any pre-existing coverage
+        // (e.g. set by the graph reducer before handing the graph to a solver).
+        uncoveredVertices = new();
         coveredSum = 0;
+        foreach (int v in graph.GetNodes()) {
+            if (coveredCount[v] > 0) coveredSum++;
+            else uncoveredVertices.Add(v);
+        }
     }
 
     public void InitFromSol(ISolution sol) {

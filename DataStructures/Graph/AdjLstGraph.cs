@@ -20,6 +20,7 @@ public class AdjLstGraph : IGraph {
         Edges = new List<int>[size+1];
         for (int i = 0; i < size; i++)
             Edges[i] = new();
+        CoveredCount = new int[size];
     }
 
     public int getSize() {
@@ -27,6 +28,7 @@ public class AdjLstGraph : IGraph {
     }
 
     public List<int>[] Edges; // Lowkey just merge
+    public int[] CoveredCount { get; }
 
     public void AddEdge(int from, int to) {
         Edges[from].Add(to);

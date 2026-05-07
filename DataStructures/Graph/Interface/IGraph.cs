@@ -15,8 +15,8 @@ public interface IGraph {
     public void AddEdge(int from, int to);
     public IEnumerable<int> GetEdges(int node);
     //public IEnumerable<UInt24> GetEdges(int node);
-    public void RemoveNode(int id);
-    public IEnumerable<int> GetNodes(); 
+    public IEnumerable<int> GetNodes();
+    public int[] CoveredCount { get; }
 
 }
 

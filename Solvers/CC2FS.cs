@@ -17,19 +17,26 @@ using System.Transactions;
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
 public class CC2FS : ISolver {
-    protected bool[] ConfChange;        // CC2 configuration change flags
-    protected IGraph graph;
-    protected SimpleSol CandidateSol;
-    protected RetSol BestSolution;
+
+    // Theory
+    protected bool[] ConfChange;
     protected uint[] freq;
     protected HashSet<int> forbidlist;
+
+    // Graph and solution state
+    protected AdjLstWithSolGraph graph;
+    protected RetSol BestSolution;
+
+    // Improvements / Implementation
     protected List<int>[] TwoLevelNeighborhood;
     protected IndexedMaxHeap AddHeap;
     protected IndexedMaxHeap RemoveHeap;
-    protected BitArray InHeap;
+    protected BitArray InAddHeap;
     protected BitArray InRemoveHeap;
     protected uint[] _timestamp;
     protected uint _stepCount = 0;
+
+    // Helpers
     protected PlotterHelper plotterHelper;
     protected class PlotterHelper {
         public double[] SelectionCounts;
@@ -108,19 +115,27 @@ public class CC2FS : ISolver {
     }
 
     String PrintName;
-    public CC2FS(IGraph graph,String printname) {
-        PrintName = printname;
+    public CC2FS(AdjLstWithSolGraph graph, String printname, CancellationToken token) {
+        int size = graph.getSize();
         this.graph = graph;
-        forbidlist = new HashSet<int>();
-        AddHeap = new(graph.getSize());
-        RemoveHeap = new(graph.getSize());
-        InHeap = new(graph.getSize(), false);
-        InRemoveHeap = new(graph.getSize(), false);
-        plotterHelper = new(graph.getSize(),printname);
 
-    }
+        // init stuff
+        {
+            forbidlist      = new HashSet<int>();
+            AddHeap         = new(size);
+            RemoveHeap      = new(size);
+            InAddHeap          = new(size, false);
+            InRemoveHeap    = new(size, false);
+            plotterHelper   = new(size, printname);
+            ConfChange      = new bool[size];
+            freq            = new uint[size];
+        }
 
-    public ISolution Solve(IGraph graph, CancellationToken? token) {
+        // Greedy initial solution
+
+        graph = GreedyDecreaseKey.Solve(graph);
+        BestSolution = graph.GetAsRetSol();
+
         // --- Build TwoLevelNeighborhood ---
         TwoLevelNeighborhood = new List<int>[graph.getSize()];
         {
@@ -150,62 +165,53 @@ public class CC2FS : ISolver {
         }
 
         // --- Initialise state ---
-        ConfChange = new bool[graph.getSize()];
-        for(int i = 0; i < graph.getSize(); i++)
+        for (int i = 0; i < graph.getSize(); i++) // CONFCHANGE INIT
             ConfChange[i] = true; // CC2-R1: all vertices initially have CC=true
 
-        freq = new uint[graph.getSize()];
-        for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
-        _timestamp = new uint[graph.getSize()];
+        
+        for (int i = 0; i < graph.getSize(); i++) // FREQ INIT
+            freq[i] = 1;
 
-        {
-            ISolution init = new GreedyDecreaseKey().Solve(graph, null);
-            CandidateSol = new SimpleSol(graph);
-            CandidateSol.InitFromSol(init);
-        }
-        BestSolution = CandidateSol.GetAsRetSol();
+        // PLOTTING
+        _timestamp = new uint[size];
+        PrintName = printname;
 
         // Populate heaps from initial solution
         foreach (int v in graph.GetNodes()) {
-            if (CandidateSol.SolutionContains(v)) {
+            if (graph.SolutionContains(v)) {
                 AddToRemoveHeap(v);
             } else {
                 AddToAddHeap(v);
             }
         }
 
+        // START
         SolveLoop(token);
-
         plotterHelper.Print(BestSolution.count);
-
-        return BestSolution;
     }
+    public ISolution GetSolution() => BestSolution;
 
-    protected void SolveLoop(CancellationToken? token) {
+    protected void SolveLoop(CancellationToken token) {
         var sw = Stopwatch.StartNew();
-        if (token == null) throw new Exception("CC2FS needs a CancellationToken");
-
         uint iterCount = 0;
-        RetSol prevHam = CandidateSol.GetAsRetSol();
-        while (!((CancellationToken)token).IsCancellationRequested) {
+        RetSol prevHam = graph.GetAsRetSol();
+        while (!token.IsCancellationRequested) {
             if (iterCount % 10 == 0) { // CAN OPTIMIZE?
                 if(iterCount % 1000 == 0) {
-                    plotterHelper.AddHamDatapoint(Hamming(CandidateSol.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
-                    prevHam = CandidateSol.GetAsRetSol();
+                    plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
+                    prevHam = graph.GetAsRetSol();
                 }
-                plotterHelper.AddSOTDatapoint(CandidateSol.GetSolutionCount(), sw.ElapsedMilliseconds);
+                plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
             }
             iterCount++;
             DoLoopLogic();
-
-
         }
     }
 
     protected virtual void DoLoopLogic() {
-        if (CandidateSol.IsSolutionValid()) {
-            if (CandidateSol.GetSolutionCount() < BestSolution.Count()) {
-                BestSolution = CandidateSol.GetAsRetSol();
+        if (graph.IsSolutionValid()) {
+            if (graph.GetSolutionCount() < BestSolution.Count()) {
+                BestSolution = graph.GetAsRetSol();
             }
             int v = GetBestRemove(forbidList: false);
             RemoveVertex(v);
@@ -214,7 +220,7 @@ public class CC2FS : ISolver {
             RemoveVertex(v);
             forbidlist.Clear();
 
-            while (!CandidateSol.IsSolutionValid()) {
+            while (!graph.IsSolutionValid()) {
                 v = GetBestAdd();
                 AddVertex(v);
                 forbidlist.Add(v);
@@ -224,11 +230,10 @@ public class CC2FS : ISolver {
     }
 
     protected int ActualBest() {
-        //TODO: IMPLEMENT OLDEST ONE TIEBREAKER
         int highest = int.MinValue;
         int reference = -1;
         foreach (var node in graph.GetNodes()) {
-            if (CandidateSol.SolutionContains(node)) continue;
+            if (graph.SolutionContains(node)) continue;
             if (ConfChange[node] == false) continue;
             var score = GetScore(node);
             if (score > highest) {
@@ -240,23 +245,23 @@ public class CC2FS : ISolver {
     }
 
     protected int GetScore(int u) {
-        if (!CandidateSol.SolutionContains(u)) {
+        if (!graph.SolutionContains(u)) {
             int sum = 0;
             foreach (int v in graph.GetEdges(u)) {
-                if (!CandidateSol.IsCovered(v))
+                if (graph.CoveredCount[v] == 0)
                     sum += (int)freq[v];
             }
-            if (!CandidateSol.IsCovered(u))
+            if (graph.CoveredCount[u] == 0)
                 sum += (int)freq[u];
             //Console.WriteLine("Sum for " + u + " is: " + sum);
             return sum;
         } else {
             int sum = 0;
             foreach (int neigh in graph.GetEdges(u)) {
-                if (CandidateSol.Covered(neigh) == 1)
+                if (graph.CoveredCount[neigh] == 1)
                     sum -= (int)freq[neigh];
             }
-            if (CandidateSol.Covered(u) == 1)
+            if (graph.CoveredCount[u] == 1)
                 sum -= (int)freq[u];
             //Console.WriteLine("Sum for " + u + " is: " + sum);
             return sum;
@@ -266,21 +271,9 @@ public class CC2FS : ISolver {
     protected virtual int GetBestAdd() {
         while (true) {
             int target = AddHeap.RemoveMax();
-            InHeap[target] = false;
-            if (CandidateSol.SolutionContains(target)) continue;
+            InAddHeap[target] = false;
+            if (graph.SolutionContains(target)) continue;
             if (!ConfChange[target]) continue;
-            //Console.WriteLine("ADD: " + target + "@ " + GetScore(target));
-            //if(target == 589020) {
-            //    //int best = ActualBest();
-            //    //Console.WriteLine(best + " @ " + GetScore(best));
-            //
-            //    //foreach (int neigh in graph.GetEdges(2)) {
-            //    //    Console.WriteLine("NEIGH: " + neigh + ". IS IN?: " + CandidateSol.SolutionContains(neigh) + " CC2: " + ConfChange[neigh]);
-            //    //}
-            //
-            //    //Console.WriteLine("BEEOP");
-            //}
-
             return target;
         }
     }
@@ -308,7 +301,7 @@ public class CC2FS : ISolver {
     }
 
     protected void AddToAddHeap(int v) {
-        InHeap[v] = true;
+        InAddHeap[v] = true;
         AddHeap.Insert(v, GetScore(v), _timestamp[v]);
     }
 
@@ -322,7 +315,7 @@ public class CC2FS : ISolver {
     }
 
     protected void UpdateHeapScores(int v) {
-        if (InHeap[v]) {
+        if (InAddHeap[v]) {
             int newScore = GetScore(v);
             AddHeap.UpdateKey(v, newScore);
         }
@@ -333,7 +326,7 @@ public class CC2FS : ISolver {
     }
 
     protected void AdjustAddScore(int v, int delta) {
-        if (InHeap[v]) AddHeap.AdjustKey(v, delta);
+        if (InAddHeap[v]) AddHeap.AdjustKey(v, delta);
     }
 
     protected void AdjustRemoveScore(int v, int delta) {
@@ -343,7 +336,7 @@ public class CC2FS : ISolver {
     protected void SetCCTrue(int v) {
         if (ConfChange[v] == false) {
             ConfChange[v] = true;
-            if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
+            if (!graph.SolutionContains(v) && !InAddHeap[v]) {
                 AddToAddHeap(v);
             }
             if (InRemoveHeap[v]) {
@@ -355,12 +348,12 @@ public class CC2FS : ISolver {
     protected void AddVertex(int v) {
         _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
-        CandidateSol.AddVertex(v);
+        graph.AddVertexToSol(v);
 
 
         // --- Neighbors of v ---
         foreach (int u in graph.GetEdges(v)) {
-            int cu = CandidateSol.Covered(u);
+            int cu = graph.CoveredCount[u];
             if (cu == 1) {                              
                 int fU = (int)freq[u];
                 AdjustAddScore(u, -fU);
@@ -379,7 +372,7 @@ public class CC2FS : ISolver {
         }
 
         // --- v itself ---
-        int cv = CandidateSol.Covered(v);
+        int cv = graph.CoveredCount[v];
         if (cv == 1) {                                 
             int fV = (int)freq[v];
             foreach (int y in graph.GetEdges(v)) {
@@ -397,18 +390,18 @@ public class CC2FS : ISolver {
             SetCCTrue(u);
 
         // Ensure v is out of AddHeap, then add to RemoveHeap
-        if (InHeap[v]) { AddHeap.Remove(v); InHeap[v] = false; }
+        if (InAddHeap[v]) { AddHeap.Remove(v); InAddHeap[v] = false; }
         AddToRemoveHeap(v);
     }
 
     protected void RemoveVertex(int v) {
         _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
-        CandidateSol.RemoveVertex(v);
+        graph.RemoveVertexFromSol(v);
         ConfChange[v] = false;
 
         foreach (int u in graph.GetEdges(v)) {
-            int cu = CandidateSol.Covered(u);
+            int cu = graph.CoveredCount[u];
             if (cu == 0) {                            
                 int fU = (int)freq[u];
                 AdjustAddScore(u, +fU);
@@ -426,7 +419,7 @@ public class CC2FS : ISolver {
             }
         }
 
-        int cv = CandidateSol.Covered(v);
+        int cv = graph.CoveredCount[v];
         if (cv == 0) {                                  
             int fV = (int)freq[v];
             foreach (int y in graph.GetEdges(v)) {
@@ -445,15 +438,21 @@ public class CC2FS : ISolver {
     }
 
     protected void IncreaseFreq() {
-        foreach (int v in CandidateSol.uncoveredVertices) {
+        foreach (int v in graph.UncoveredVertices) {
             freq[v] += 1;
         }
 
-        foreach (int v in CandidateSol.uncoveredVertices) {
+        foreach (int v in graph.UncoveredVertices) {
             AdjustAddScore(v, +1);
             foreach (int neigh in graph.GetEdges(v)) {
                 AdjustAddScore(neigh, +1);
             }
         }
+    }
+}
+
+public class CC2FSFactory : ISolverFactory {
+    public ISolver Create(AdjLstWithSolGraph graph, CancellationToken token, string name) {
+        return new CC2FS(graph, name, token);
     }
 }

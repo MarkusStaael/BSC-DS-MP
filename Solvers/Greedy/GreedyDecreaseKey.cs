@@ -11,86 +11,47 @@ using System.Xml.Linq;
 
 namespace BSC_DS_MP.Solvers;
 
-public class GreedyDecreaseKey : ISolver {
-    public ISolution Solve(IGraph graph, CancellationToken? token) {
+public class GreedyDecreaseKey {
+    public static AdjLstWithSolGraph Solve(AdjLstWithSolGraph graph) {
         int size = graph.getSize();
-        ISolution sol = new HashSetSolution(size);
-        BitArray covered = new BitArray(size, false);
-        int coveredCount = 0;
+        int[] cov = graph.CoveredCount;
 
-        // store current coverage for each node (uncovered neighbours + self)
-        int[] coverage = new int[size];
-        var heap = new IndexedMaxHeap(size);
-
-        // initialize keys for heap with coverage values
-        foreach (int node in graph.GetNodes()) {
-            int cov = graph.GetEdges(node).Count() + 1;
-            coverage[node] = cov;
+        // Build heap scores: number of uncovered neighbours + uncovered self
+        int[] score = new int[size];
+        foreach (int v in graph.GetNodes()) {
+            int s = (cov[v] == 0) ? 1 : 0;
+            foreach (int nb in graph.GetEdges(v))
+                if (cov[nb] == 0) s++;
+            score[v] = s;
         }
-        heap.MakeHeap(coverage);
-        
-        // Greedy selection until all vertices are covered
-        int totalRemovals = 0;
-        int skipCount = 0;
-        while (!heap.IsEmpty() && coveredCount < size) {
-            int selectedNode = heap.RemoveMax();
-            totalRemovals++;
+        var heap = new IndexedMaxHeap(size);
+        heap.MakeHeap(score);
 
-            // lazy skip (should not occur)
-            if (covered[selectedNode]) {
-                skipCount++;
-                continue;
-            }
+        while (!heap.IsEmpty() && graph.TotalDominatedVertices < size) {
+            int v = heap.RemoveMax();
 
-            // gather nodes that will become covered this round (selected + its neighbors)
+            if (cov[v] > 0) continue; // lazy skip: already covered
+
+            // Record which vertices become newly covered
             var newlyCovered = new List<int>();
-            if (!covered[selectedNode]) {
-                covered[selectedNode] = true;
-                coveredCount++;
-                newlyCovered.Add(selectedNode);
-                sol.AddVertex(selectedNode);
-            }
+            graph.AddVertexToSol(v);
+            // v itself
+            if (cov[v] == 1) newlyCovered.Add(v);
+            // neighbours (AddVertexToSol already incremented them)
+            foreach (int nb in graph.GetEdges(v))
+                if (cov[nb] == 1) newlyCovered.Add(nb);
 
-            foreach (int neighbor in graph.GetEdges(selectedNode)) {
-                if (!covered[neighbor]) {
-                    covered[neighbor] = true;
-                    coveredCount++;
-                    newlyCovered.Add(neighbor);
-                }
-            }
-
-            // for each node that just became covered, decrement coverage of its uncovered neighbours
+            // Decrement scores of uncovered neighbours of newly covered vertices
             foreach (int c in newlyCovered) {
                 foreach (int nbr in graph.GetEdges(c)) {
-                    if (!covered[nbr]) {
-                        coverage[nbr]--;
-                        heap.DecreaseKey(nbr, coverage[nbr]);
+                    if (cov[nbr] == 0) {
+                        score[nbr]--;
+                        heap.DecreaseKey(nbr, score[nbr]);
                     }
                 }
             }
         }
 
-        // debugging output
-        // Console.WriteLine($"GreedyNoUpdate removed {totalRemovals} nodes (skipped {skipCount}) and covered {coveredCount}/{size}");
-
-        // fallback: should not be necessary with the indexed heap, but keep it just in case
-        /*if (coveredCount < size) {
-            for (int v = 0; v < size && coveredCount < size; v++) {
-                if (!covered[v]) {
-                    sol.AddVertex(v);
-                    covered[v] = true;
-                    coveredCount++;
-                    foreach (int nbr in graph.GetEdges(v)) {
-                        if (!covered[nbr]) {
-                            covered[nbr] = true;
-                            coveredCount++;
-                        }
-                    }
-                }
-            }
-        }*/
-
-        return sol;
+        return graph;
     }
 }
-

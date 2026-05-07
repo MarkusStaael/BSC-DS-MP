@@ -6,6 +6,6 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace BSC_DS_MP.Solvers; 
-internal interface ISolver {
-    public ISolution Solve(IGraph graph, CancellationToken? token);
+public interface ISolver {
+    public ISolution GetSolution();
 }

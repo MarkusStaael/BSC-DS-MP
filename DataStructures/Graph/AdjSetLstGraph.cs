@@ -15,12 +15,14 @@ public class AdjSetLstGraphFactory : IGraphFactory {
 
 public class AdjSetLstGraph : IGraph {
     public HashSet<int>[] Edges; // Lowkey just merge
+    public int[] CoveredCount { get; }
     int Size;
     public AdjSetLstGraph(int size) {
         this.Size = size;
         Edges = new HashSet<int>[size + 1];
         for (int i = 0; i < size; i++)
             Edges[i] = new();
+        CoveredCount = new int[size];
     }
 
     public int getSize() {
