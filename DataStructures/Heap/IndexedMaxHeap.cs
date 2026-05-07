@@ -93,6 +93,9 @@ namespace BSC_DS_MP.DataStructures.Heap
 
         public bool Contains(int node) => _position[node] != -1;
 
+        /// <summary>Returns the node stored at zero-based <paramref name="index"/> in the heap array.</summary>
+        public int GetNodeAt(int index) => _heap[index + 1];
+
         public void DecreaseKey(int node, int newKey)
         {
             int pos = _position[node];
@@ -183,6 +186,62 @@ namespace BSC_DS_MP.DataStructures.Heap
             _heap[j] = ni;
             _position[ni] = j;
             _position[nj] = i;
+        }
+
+        /// <summary>
+        /// Fills <paramref name="output"/> with up to <paramref name="k"/> node IDs
+        /// that have the largest keys (ties broken by smallest age), without modifying
+        /// the heap. Uses a BFS over heap positions so the result is the true top-k.
+        /// Returns the actual number of entries written.
+        /// </summary>
+        public int PeekTopK(int k, int[] output)
+        {
+            if (_size == 0 || k <= 0) return 0;
+            // Auxiliary max-heap of heap *positions*, ordered by the key/age of the
+            // node sitting at each position. Max size reached during BFS is k+1.
+            Span<int> aux = stackalloc int[k + 3]; // 1-based
+            int auxSz = 0;
+            PosHeapPush(aux, ref auxSz, 1);
+            int filled = 0;
+            while (filled < k && auxSz > 0)
+            {
+                int pos = PosHeapPop(aux, ref auxSz);
+                output[filled++] = _heap[pos];
+                int left = pos * 2, right = left + 1;
+                if (left  <= _size) PosHeapPush(aux, ref auxSz, left);
+                if (right <= _size) PosHeapPush(aux, ref auxSz, right);
+            }
+            return filled;
+        }
+
+        private void PosHeapPush(Span<int> h, ref int sz, int pos)
+        {
+            h[++sz] = pos;
+            int i = sz;
+            while (i > 1)
+            {
+                int parent = i / 2;
+                if (!IsGreater(_heap[h[i]], _heap[h[parent]])) break;
+                (h[i], h[parent]) = (h[parent], h[i]);
+                i = parent;
+            }
+        }
+
+        private int PosHeapPop(Span<int> h, ref int sz)
+        {
+            int top = h[1];
+            h[1] = h[sz--];
+            int i = 1;
+            while (true)
+            {
+                int l = i * 2, r = l + 1, best = i;
+                if (l <= sz && IsGreater(_heap[h[l]], _heap[h[best]])) best = l;
+                if (r <= sz && IsGreater(_heap[h[r]], _heap[h[best]])) best = r;
+                if (best == i) break;
+                (h[i], h[best]) = (h[best], h[i]);
+                i = best;
+            }
+            return top;
         }
     }
 }

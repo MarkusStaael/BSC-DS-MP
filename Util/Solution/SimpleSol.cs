@@ -8,7 +8,7 @@ using System.Text;
 namespace BSC_DS_MP.Util; 
 public class SimpleSol {
 
-    public BitArray VerticesInS;
+    public bool[] VerticesInS;
     public HashSet<int> uncoveredVertices;
     public int[] coveredCount;
     public int coveredSum;
@@ -16,7 +16,7 @@ public class SimpleSol {
     IGraph graph;
 
     public SimpleSol(IGraph graph) {
-        VerticesInS = new(graph.getSize(), false);
+        VerticesInS = new bool[graph.getSize()]; // Default of value is false
         coveredCount = new int[graph.getSize()];
         uncoveredVertices = new();
         this.graph = graph;
@@ -38,10 +38,10 @@ public class SimpleSol {
         return VerticesInS[v] == true;
     }
     private void AddToS(int v) {
-        VerticesInS.Set(v, true);
+        VerticesInS[v] = true;
     }
     private void RemoveFromS(int v) {
-        VerticesInS.Set(v, false);
+        VerticesInS[v] = false;
     }
 
     public void AddVertex(int v) {
@@ -99,16 +99,6 @@ public class SimpleSol {
     }
     public bool IsCovered(int v) {
         return coveredCount[v] > 0;
-    }
-    public SimpleSol Clone() {
-        var ret = new SimpleSol(graph);
-
-        ret.VerticesInS = new(VerticesInS);
-        ret.uncoveredVertices = new HashSet<int>(uncoveredVertices);
-        ret.coveredSum = coveredSum;
-        ret.coveredCount = (int[])coveredCount.Clone();
-
-        return ret;
     }
     public RetSol GetAsRetSol() {
         var ret = new RetSol(graph.getSize());

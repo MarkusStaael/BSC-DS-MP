@@ -17,7 +17,7 @@ using System.Transactions;
 namespace BSC_DS_MP.Solvers;
 // https://jair.org/index.php/jair/article/view/11044/26218
 public class CC2FS : ISolver {
-    protected BitArray ConfChange;        // CC2 configuration change flags
+    protected bool[] ConfChange;        // CC2 configuration change flags
     protected IGraph graph;
     protected SimpleSol CandidateSol;
     protected RetSol BestSolution;
@@ -100,7 +100,7 @@ public class CC2FS : ISolver {
         }
     }
 
-    protected int Hamming(BitArray a, BitArray b) {
+    protected int Hamming(bool[] a, BitArray b) {
         int count = 0;
         for (int i = 0; i < a.Length; i++)
             if (a[i] != b[i]) count++;
@@ -149,9 +149,13 @@ public class CC2FS : ISolver {
             }
         }
 
+
+
         // --- Initialise state ---
-        ConfChange = new(graph.getSize());
-        ConfChange.SetAll(true); // CC2-R1
+        ConfChange = new bool[graph.getSize()];
+        for(int i = 0; i < graph.getSize(); i++)
+            ConfChange[i] = true; // CC2-R1: all vertices initially have CC=true
+
         freq = new uint[graph.getSize()];
         for (int i = 0; i < graph.getSize(); i++) freq[i] = 1;
         _timestamp = new uint[graph.getSize()];
@@ -262,7 +266,6 @@ public class CC2FS : ISolver {
     }
 
     protected virtual int GetBestAdd() {
-    
         while (true) {
             int target = AddHeap.RemoveMax();
             InHeap[target] = false;
@@ -324,29 +327,30 @@ public class CC2FS : ISolver {
         if (InHeap[v]) {
             int newScore = GetScore(v);
             AddHeap.UpdateKey(v, newScore);
-            //if(newScore > 0)
-            //    Console.WriteLine("Updated " + v + " to " + newScore);
-
         }
         if (InRemoveHeap[v]) {
-
             int newScore = GetScore(v);
             RemoveHeap.UpdateKey(v, newScore);
-
-            //if (newScore > 0)
-            //    Console.WriteLine("Updated " + v + " to " + newScore);
         }
+    }
+
+    protected void AdjustAddScore(int v, int delta) {
+        if (InHeap[v]) AddHeap.AdjustKey(v, delta);
+    }
+
+    protected void AdjustRemoveScore(int v, int delta) {
+        if (InRemoveHeap[v]) RemoveHeap.AdjustKey(v, delta);
     }
 
     protected void SetCCTrue(int v) {
         if (ConfChange[v] == false) {
-            ConfChange.Set(v, true);
+            ConfChange[v] = true;
             if (!CandidateSol.SolutionContains(v) && !InHeap[v]) {
                 AddToAddHeap(v);
-            } 
-            //if (InRemoveHeap[v]) { ADDED THIS WHEN I ADDED HEAPS, I DON'T THINK IT SHOULD BE HERE BUT WILL LEAVE IT
-            //    RemoveHeap.UpdateKey(v, GetScore(v));
-            //}
+            }
+            if (InRemoveHeap[v]) {
+                RemoveHeap.UpdateKey(v, GetScore(v));
+            }
         }
     }
 
@@ -355,77 +359,102 @@ public class CC2FS : ISolver {
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.AddVertex(v);
 
+
+        // --- Neighbors of v ---
+        foreach (int u in graph.GetEdges(v)) {
+            int cu = CandidateSol.Covered(u);
+            if (cu == 1) {                              
+                int fU = (int)freq[u];
+                AdjustAddScore(u, -fU);
+                AdjustRemoveScore(u, -fU);
+                foreach (int y in graph.GetEdges(u)) {
+                    AdjustAddScore(y, -fU);
+                    AdjustRemoveScore(y, -fU);
+                }
+            } else if (cu == 2) {                       
+                int fU = (int)freq[u];
+                AdjustRemoveScore(u, +fU);
+                foreach (int y in graph.GetEdges(u)) {
+                    AdjustRemoveScore(y, +fU);
+                }
+            }
+        }
+
+        // --- v itself ---
+        int cv = CandidateSol.Covered(v);
+        if (cv == 1) {                                 
+            int fV = (int)freq[v];
+            foreach (int y in graph.GetEdges(v)) {
+                AdjustAddScore(y, -fV);
+                AdjustRemoveScore(y, -fV);
+            }
+        } else if (cv == 2) {                           
+            int fV = (int)freq[v];
+            foreach (int y in graph.GetEdges(v)) {
+                AdjustRemoveScore(y, +fV);
+            }
+        }
+
         foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
-
-        // Update v's direct neighbors and propagate on coverage transitions
-        foreach (int u in graph.GetEdges(v)) {
-            UpdateHeapScores(u);
-            if (CandidateSol.Covered(u) == 1) {           // 0→1: neighbors' add-scores decrease
-                foreach (int y in graph.GetEdges(u))
-                    UpdateHeapScores(y);
-            }
-            if (CandidateSol.Covered(u) == 2) {           // 1→2: adjacent solution vertices become more redundant
-                foreach (int y in graph.GetEdges(u))
-                    UpdateHeapScores(y);
-            }
-        }
-        // v itself: propagate on both transitions
-        if (CandidateSol.Covered(v) == 1 || CandidateSol.Covered(v) == 2) {
-            foreach (int y in graph.GetEdges(v))
-                UpdateHeapScores(y);
-        }
 
         // Ensure v is out of AddHeap, then add to RemoveHeap
         if (InHeap[v]) { AddHeap.Remove(v); InHeap[v] = false; }
         AddToRemoveHeap(v);
-
-        
     }
 
     protected void RemoveVertex(int v) {
         _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
         CandidateSol.RemoveVertex(v);
-        ConfChange.Set(v, false);
+        ConfChange[v] = false;
+
+        foreach (int u in graph.GetEdges(v)) {
+            int cu = CandidateSol.Covered(u);
+            if (cu == 0) {                            
+                int fU = (int)freq[u];
+                AdjustAddScore(u, +fU);
+                AdjustRemoveScore(u, +fU);
+                foreach (int y in graph.GetEdges(u)) {
+                    AdjustAddScore(y, +fU);
+                    AdjustRemoveScore(y, +fU);
+                }
+            } else if (cu == 1) {                      
+                int fU = (int)freq[u];
+                AdjustRemoveScore(u, -fU);
+                foreach (int y in graph.GetEdges(u)) {
+                    AdjustRemoveScore(y, -fU);
+                }
+            }
+        }
+
+        int cv = CandidateSol.Covered(v);
+        if (cv == 0) {                                  
+            int fV = (int)freq[v];
+            foreach (int y in graph.GetEdges(v)) {
+                AdjustAddScore(y, +fV);
+                AdjustRemoveScore(y, +fV);
+            }
+        } else if (cv == 1) {                          
+            int fV = (int)freq[v];
+            foreach (int y in graph.GetEdges(v)) {
+                AdjustRemoveScore(y, -fV);
+            }
+        }
 
         foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
-
-        // Ensure v is out of RemoveHeap (usually already popped by GetBestRemove)
-        //if (InRemoveHeap[v]) { RemoveHeap.Remove(v); InRemoveHeap[v] = false; }
-        // v has CC=false so do NOT add to AddHeap (per paper's ConfChange rule)
-
-        // Update neighbors and propagate on coverage transitions
-        foreach (int u in graph.GetEdges(v)) {
-            UpdateHeapScores(u);
-            if (CandidateSol.Covered(u) == 0) {           // 1→0: neighbors' add-scores increase
-                foreach (int y in graph.GetEdges(u))
-                    UpdateHeapScores(y);
-            }
-            if (CandidateSol.Covered(u) == 1) {           // 2→1: adjacent solution vertices become less redundant
-                foreach (int y in graph.GetEdges(u))
-                    UpdateHeapScores(y);
-            }
-        }
-        // v itself: propagate on both transitions
-        //if (CandidateSol.Covered(v) == 0 || CandidateSol.Covered(v) == 1) {
-        //    UpdateHeapScores(v);
-        //    foreach (int y in graph.GetEdges(v))
-        //        UpdateHeapScores(y);
-        //}
     }
 
     protected void IncreaseFreq() {
         foreach (int v in CandidateSol.uncoveredVertices) {
             freq[v] += 1;
-
         }
 
         foreach (int v in CandidateSol.uncoveredVertices) {
-            UpdateHeapScores(v);
+            AdjustAddScore(v, +1);
             foreach (int neigh in graph.GetEdges(v)) {
-                UpdateHeapScores(neigh);
+                AdjustAddScore(neigh, +1);
             }
         }
     }

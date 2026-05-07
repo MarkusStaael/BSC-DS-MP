@@ -10,38 +10,26 @@ bool printResult = false;
 bool toFile = false;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
-int timelimit = 60; // seconds
+int timelimit = 300; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // Tests 
-VerifierTest();
+//VerifierTest();
 
 
 // TESTS
 
 IGraph graph = Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path);
 
-//RunTest(new GreedyDecreaseKey(), graph, "Test: Greedy (Control)", new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FS(graph,"CC2FS"),                       graph, "Test: CC2FS",       new AdjSetLstGraphFactory(), false,false);
-RunTest(new CC2FSOpt(graph, "CC2FSopt"),                graph, "Test: CC2FSopt",    new AdjSetLstGraphFactory(), false, false);
-
-RunTest(new CC2FS(graph, "CC2FS"), graph, "Test: CC2FS", new AdjLstGraphFactory(), false, false);
-
-//RunTest(new CC2FSGraphReduce(graph, "CC2FS reduc"),     graph, "Test: CC2FS reduc", new AdjSetLstGraphFactory(), false,false);
-//RunTest(new CC2FS(graph, "cc2fs"), graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false,false);
-//RunTest(new CC2FSOpt(graph, "cc2fs opt"), graph, "Test: cc2fs opt", new AdjSetLstGraphFactory(), false,false);
-//RunTest(new CC2FSOpt(graph, "cc2fs cc bool"), graph, "Test: cc2fs cc bool", new AdjSetLstGraphFactory(), false,false);
-
-//RunTest(new CC2FSOpt(graph, "10min_CC2FSOpt"), graph, "Test: Baseline CC2FS 10 minute run", null, false, true);
-//RunTest(new CC2FSSA(graph, "10min_CC2FSOpt_Stochastic"), graph, "Test: CC2FSOpt with top 5 Stochastic 10 minute run", new AdjSetLstGraphFactory(), false,false);
-//RunTest(new CC2FSSA(graph, "10min_CC2FSOpt_Stochastic"), graph, "Test: CC2FSOpt with top 5 Stochastic 10 minute run", new AdjSetLstGraphFactory(), false,false);
+RunTest(new CC2FS(graph, "CC2FS"),              graph, "Test: CC2FS", new AdjSetLstGraphFactory(), false, false);
+RunTest(new CC2FSPerbutation(graph, "CC2FS-P"), graph, "Test: CC2FS-p", new AdjSetLstGraphFactory(), false, false);
 
 
 void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory? fac, bool popup, bool csrGraph) {
-    Console.WriteLine("---Starting test");
+    Console.WriteLine("---Preparing test \"" + id + "\" ---");
     IGraph clone;
     if (csrGraph) {
         clone = new CsrGraph(gr);
@@ -50,6 +38,7 @@ void RunTest(ISolver solver, IGraph gr, string id, IGraphFactory? fac, bool popu
     else
         throw new Exception("no IGraphFactory");
 
+    Console.WriteLine("Starting now "+DateTime.Now);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit));
     CancellationToken token = cts.Token;
 
