@@ -30,24 +30,28 @@ public class GreedyDecreaseKey {
         while (!heap.IsEmpty() && graph.TotalDominatedVertices < size) {
             int v = heap.RemoveMax();
 
-            if (cov[v] > 0) continue; // lazy skip: already covered
+            int actualScore = (cov[v] == 0) ? 1 : 0;
+            foreach (int nb in graph.GetEdges(v))
+                if (cov[nb] == 0) actualScore++;
+            if (actualScore == 0) continue;
 
             // Record which vertices become newly covered
             var newlyCovered = new List<int>();
             graph.AddVertexToSol(v);
-            // v itself
+
+            
             if (cov[v] == 1) newlyCovered.Add(v);
-            // neighbours (AddVertexToSol already incremented them)
+
             foreach (int nb in graph.GetEdges(v))
                 if (cov[nb] == 1) newlyCovered.Add(nb);
 
-            // Decrement scores of uncovered neighbours of newly covered vertices
+
             foreach (int c in newlyCovered) {
+                score[c]--;
+                heap.DecreaseKey(c, score[c]);
                 foreach (int nbr in graph.GetEdges(c)) {
-                    if (cov[nbr] == 0) {
-                        score[nbr]--;
-                        heap.DecreaseKey(nbr, score[nbr]);
-                    }
+                    score[nbr]--;
+                    heap.DecreaseKey(nbr, score[nbr]);
                 }
             }
         }

@@ -56,12 +56,12 @@ public class MDSReduction : IReduction {
                     continue;
                 }
 
-                //// Rule 2: degree-1, undominated — force sole neighbor into DS
-                //if (!dominated[v] && adj[v].Count == 1) {
-                //    ForceIntoDS(adj[v][0]);
-                //    RemoveVertex(v);
-                //    continue;
-                //}
+                // Rule 2: degree-1, undominated — force sole neighbor into DS
+                if (!dominated[v] && adj[v].Count == 1) {
+                    ForceIntoDS(adj[v][0]);
+                    RemoveVertex(v);
+                    continue;
+                }
             }
         }
 
@@ -78,10 +78,6 @@ public class MDSReduction : IReduction {
         // --- Build reduced AdjLstWithSolGraph ---
         var reduced = new AdjLstWithSolGraph(k);
 
-        // Add all surviving vertices to UncoveredVertices initially
-        for (int r = 0; r < k; r++)
-            reduced.UncoveredVertices.Add(r);
-
         // Add edges (adj[v] now contains only surviving neighbors)
         for (int v = 0; v < n; v++) {
             if (removed[v]) continue;
@@ -93,7 +89,10 @@ public class MDSReduction : IReduction {
         }
 
         // --- Pre-populate coverage from forced vertices ---
-        // adj[v] was already cleared when v was removed, so use originalNeighbors
+        // adj[v] was already cleared when v was removed, so use originalNeighbors.
+        // We only update CoveredCount and TotalDominatedVertices here; UncoveredVertices
+        // is left empty and maintained entirely by AddVertexToSol/RemoveVertexFromSol
+        // once GreedyDecreaseKey and CC2FS take over.
         for (int v = 0; v < n; v++) {
             if (!forced[v]) continue;
             foreach (int u in original.GetEdges(v)) {
@@ -102,7 +101,6 @@ public class MDSReduction : IReduction {
                 reduced.CoveredCount[ru]++;
                 if (reduced.CoveredCount[ru] == 1) {
                     reduced.TotalDominatedVertices++;
-                    reduced.UncoveredVertices.Remove(ru);
                 }
             }
         }

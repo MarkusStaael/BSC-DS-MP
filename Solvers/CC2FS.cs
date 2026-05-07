@@ -35,9 +35,26 @@ public class CC2FS : ISolver {
     protected BitArray InRemoveHeap;
     protected uint[] _timestamp;
     protected uint _stepCount = 0;
+    protected int[] _incFreqDelta;    // scratch array for batching IncreaseFreq heap updates
+    protected List<int> _incFreqAffected; // vertices touched in current IncreaseFreq call
 
     // Helpers
     protected PlotterHelper plotterHelper;
+    protected Profiler prof;
+    protected class Profiler {
+        public long TicksAddVertex, TicksRemoveVertex, TicksGetBestAdd, TicksGetBestRemove, TicksIncreaseFreq, TicksSetCCTrue;
+        public long CallsAddVertex, CallsRemoveVertex, CallsGetBestAdd, CallsGetBestRemove, CallsIncreaseFreq, CallsSetCCTrue;
+        public void Print() {
+            double freq = Stopwatch.Frequency;
+            Console.WriteLine("=== CC2FS Profiler ===");
+            Console.WriteLine($"  AddVertex    : {TicksAddVertex/freq*1000:F1} ms  ({CallsAddVertex} calls)");
+            Console.WriteLine($"  RemoveVertex : {TicksRemoveVertex/freq*1000:F1} ms  ({CallsRemoveVertex} calls)");
+            Console.WriteLine($"  GetBestAdd   : {TicksGetBestAdd/freq*1000:F1} ms  ({CallsGetBestAdd} calls)");
+            Console.WriteLine($"  GetBestRemove: {TicksGetBestRemove/freq*1000:F1} ms  ({CallsGetBestRemove} calls)");
+            Console.WriteLine($"  IncreaseFreq : {TicksIncreaseFreq/freq*1000:F1} ms  ({CallsIncreaseFreq} calls)");
+            Console.WriteLine($"  SetCCTrue    : {TicksSetCCTrue/freq*1000:F1} ms  ({CallsSetCCTrue} calls)");
+        }
+    }
     protected class PlotterHelper {
         public double[] SelectionCounts;
         private String PrintName;
@@ -127,8 +144,11 @@ public class CC2FS : ISolver {
             InAddHeap          = new(size, false);
             InRemoveHeap    = new(size, false);
             plotterHelper   = new(size, printname);
-            ConfChange      = new bool[size];
-            freq            = new uint[size];
+            ConfChange          = new bool[size];
+            freq                = new uint[size];
+            prof                = new Profiler();
+            _incFreqDelta       = new int[size];
+            _incFreqAffected    = new List<int>(size);
         }
 
         // Greedy initial solution
@@ -187,6 +207,7 @@ public class CC2FS : ISolver {
 
         // START
         SolveLoop(token);
+        prof.Print();
         plotterHelper.Print(BestSolution.count);
     }
     public ISolution GetSolution() => BestSolution;
@@ -229,21 +250,6 @@ public class CC2FS : ISolver {
         }
     }
 
-    protected int ActualBest() {
-        int highest = int.MinValue;
-        int reference = -1;
-        foreach (var node in graph.GetNodes()) {
-            if (graph.SolutionContains(node)) continue;
-            if (ConfChange[node] == false) continue;
-            var score = GetScore(node);
-            if (score > highest) {
-                highest = score;
-                reference = node;
-            }
-        }
-        return reference;
-    }
-
     protected int GetScore(int u) {
         if (!graph.SolutionContains(u)) {
             int sum = 0;
@@ -269,17 +275,19 @@ public class CC2FS : ISolver {
     }
 
     protected virtual int GetBestAdd() {
+        long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestAdd++;
         while (true) {
             int target = AddHeap.RemoveMax();
             InAddHeap[target] = false;
             if (graph.SolutionContains(target)) continue;
             if (!ConfChange[target]) continue;
+            prof.TicksGetBestAdd += Stopwatch.GetTimestamp() - _t;
             return target;
         }
     }
 
     protected virtual int GetBestRemove(bool forbidList) {
-
+        long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestRemove++;
         List<int> addAgainList = new List<int>();
 
         while(true) {
@@ -293,9 +301,8 @@ public class CC2FS : ISolver {
                     AddToRemoveHeap(u);
                 }
                 InRemoveHeap[target] = false;
-                //Console.WriteLine("REM: " + target + "@ "+GetScore(target));
+                prof.TicksGetBestRemove += Stopwatch.GetTimestamp() - _t;
                 return target; 
-
             }
         }
     }
@@ -334,6 +341,7 @@ public class CC2FS : ISolver {
     }
 
     protected void SetCCTrue(int v) {
+        long _t = Stopwatch.GetTimestamp(); prof.CallsSetCCTrue++;
         if (ConfChange[v] == false) {
             ConfChange[v] = true;
             if (!graph.SolutionContains(v) && !InAddHeap[v]) {
@@ -343,9 +351,11 @@ public class CC2FS : ISolver {
                 RemoveHeap.UpdateKey(v, GetScore(v));
             }
         }
+        prof.TicksSetCCTrue += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void AddVertex(int v) {
+        long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
         _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
         graph.AddVertexToSol(v);
@@ -392,9 +402,11 @@ public class CC2FS : ISolver {
         // Ensure v is out of AddHeap, then add to RemoveHeap
         if (InAddHeap[v]) { AddHeap.Remove(v); InAddHeap[v] = false; }
         AddToRemoveHeap(v);
+        prof.TicksAddVertex += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void RemoveVertex(int v) {
+        long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
         _timestamp[v] = ++_stepCount;
         plotterHelper.SelectionCounts[v] += 1;
         graph.RemoveVertexFromSol(v);
@@ -435,19 +447,39 @@ public class CC2FS : ISolver {
 
         foreach (int u in TwoLevelNeighborhood[v])
             SetCCTrue(u);
+        prof.TicksRemoveVertex += Stopwatch.GetTimestamp() - _t;
     }
 
+    int largest = 0;
     protected void IncreaseFreq() {
-        foreach (int v in graph.UncoveredVertices) {
-            freq[v] += 1;
+        long _t = Stopwatch.GetTimestamp(); prof.CallsIncreaseFreq++;
+        if(graph.UncoveredVertices.Count > largest) {
+            largest = graph.UncoveredVertices.Count;
+            Console.WriteLine("Count: " + largest);
         }
 
+
+        // Increment freq for every uncovered vertex and accumulate the per-vertex
+        // add-score delta in one pass.  score(u) increases by the number of uncovered
+        // vertices in N[u]∪{u} whose freq just increased.  Batching avoids
+        // O(|Uncovered|×deg) heap operations; each affected vertex gets one update.
         foreach (int v in graph.UncoveredVertices) {
-            AdjustAddScore(v, +1);
+            freq[v]++;
+            if (_incFreqDelta[v] == 0) _incFreqAffected.Add(v);
+            _incFreqDelta[v]++;
             foreach (int neigh in graph.GetEdges(v)) {
-                AdjustAddScore(neigh, +1);
+                if (_incFreqDelta[neigh] == 0) _incFreqAffected.Add(neigh);
+                _incFreqDelta[neigh]++;
             }
         }
+
+        foreach (int v in _incFreqAffected) {
+            AdjustAddScore(v, _incFreqDelta[v]);
+            _incFreqDelta[v] = 0;
+        }
+        _incFreqAffected.Clear();
+
+        prof.TicksIncreaseFreq += Stopwatch.GetTimestamp() - _t;
     }
 }
 

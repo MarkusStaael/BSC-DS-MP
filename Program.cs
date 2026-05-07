@@ -9,6 +9,7 @@ using System.Diagnostics;
 // EDIT HERE FOR SIMPLE TESTING
 bool printResult = false;
 bool toFile = false;
+bool useReduction = true;
 string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
 int target = 2;
 int timelimit = 60; // seconds
@@ -25,19 +26,31 @@ void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
     Console.WriteLine("---Preparing test \"" + id + "\" ---");
 
     MDSReduction reduction = new MDSReduction();
-    AdjLstWithSolGraph graph = reduction.Reduce(Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path));
-    Console.WriteLine("Reduced graph: " + reduction.OriginalSize + " -> " + reduction.ReducedSize + " vertices, " + reduction.ForcedVertices.Count + " forced into DS during reduction");
+    
+    AdjLstWithSolGraph graph;
+    if (useReduction) {
+        graph = reduction.Reduce(Reader.DominatingSetReader(path));
+        Console.WriteLine("Reduced graph: " + reduction.OriginalSize + " -> " + reduction.ReducedSize + " vertices, " + reduction.ForcedVertices.Count + " forced into DS during reduction");
+    } else {
+        graph = Reader.DominatingSetReader(path);
+        Console.WriteLine("Running without reduction, graph size: " + graph.getSize());
+    }
     Console.WriteLine("New covered vertices: " + graph.GetCoveredSum());
     Console.WriteLine("Starting now "+DateTime.Now);
 
     CancellationToken token = new CancellationTokenSource(TimeSpan.FromSeconds(timelimit)).Token;
     var ts = DateTime.Now;
     ISolution reducedResult = solverFactory.Create(graph, token, id).GetSolution();
-    Console.WriteLine("CC2FS found " + reducedResult.Count() + " vertices on reduced graph, " + reduction.ForcedVertices.Count + " forced, reconstructing...");
-    ISolution result = reduction.Reconstruct(reducedResult);
+    ISolution result;
+    if (useReduction) {
+        Console.WriteLine("CC2FS found " + reducedResult.Count() + " vertices on reduced graph, " + reduction.ForcedVertices.Count + " forced, reconstructing...");
+        result = reduction.Reconstruct(reducedResult);
+    } else {
+        result = reducedResult;
+    }
     var dt = (DateTime.Now - ts);
     Console.WriteLine("Finished, now verifying");
-    bool passed = Verifier.Verify(result, Reader.DominatingSetReader(new AdjSetLstGraphFactory(), path));
+    bool passed = Verifier.Verify(result, Reader.DominatingSetReader(path));
     int lazycount = 0;
 
     Console.WriteLine("Test \"" + id + "\" Delta time: " + dt.ToString() + "s . Resulting set size: " + result.Count() + " RESULT ACCEPTED?: " + passed);

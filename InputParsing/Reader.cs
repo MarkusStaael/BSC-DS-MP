@@ -6,10 +6,10 @@ using System.Text;
 namespace BSC_DS_MP.Reading; 
 public static class Reader {
 
-    public static IGraph DominatingSetReader(IGraphFactory factory, string path) {
+    public static AdjLstWithSolGraph DominatingSetReader(string path) {
 
         Console.WriteLine("Reading Dominating Set from file: " + path);
-        IGraph graph;
+        AdjLstWithSolGraph graph;
 
         using (StreamReader reader = new StreamReader(path)) {
             string line;
@@ -22,7 +22,7 @@ public static class Reader {
                 }
                 if (strings[0].Equals("p")) {
                     Console.WriteLine("Problem: " + line);
-                    graph = factory.Create(int.Parse(strings[2]));
+                    graph = new AdjLstWithSolGraph(int.Parse(strings[2]));
                     break;
                 }
                 throw new Exception("Invalid file format: missing problem line");
@@ -37,7 +37,7 @@ public static class Reader {
                 }
                 int v = int.Parse(strings[0])-1, e = int.Parse(strings[1])-1;
 
-                graph.AddNode(v);
+                //graph.AddNode(v);
                 graph.AddEdge(v,e);
             }
             //graph.RemoveNode(0); // Remove dummy node
