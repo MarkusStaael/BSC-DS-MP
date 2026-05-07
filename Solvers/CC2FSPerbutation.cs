@@ -27,7 +27,7 @@ public class CC2FSPerbutation : CC2FS {
     public double GetPerturbationProbability() {
         return 0.0001;
     }
-    Random _random = new Random();
+    Random _random = new Random(0);
     public CC2FSPerbutation(AdjLstWithSolGraph graph, String printname, CancellationToken token) : base(graph, printname, token) {
     }
     protected void Perturb() {

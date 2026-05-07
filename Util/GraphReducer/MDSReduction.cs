@@ -43,6 +43,8 @@ public class MDSReduction : IReduction {
                 if (u > v) { adj[v].Add(u); adj[u].Add(v); }
 
         // --- Reduction rule loop ---
+        int[] mark = new int[n];
+        int markStamp = 0;
         changed = true;
         while (changed) {
             changed = false;
@@ -62,6 +64,52 @@ public class MDSReduction : IReduction {
                     RemoveVertex(v);
                     continue;
                 }
+
+                // Rule 3: v is dominated AND every neighbor of v is also dominated →
+                // v cannot contribute new coverage, so remove without forcing into DS.
+                if (dominated[v]) {
+                    bool allNeighborsDominated = true;
+                    foreach (int u in adj[v]) {
+                        if (!dominated[u]) { allNeighborsDominated = false; break; }
+                    }
+                    if (allNeighborsDominated) {
+                        RemoveVertex(v);
+                        continue;
+                    }
+                }
+
+                // Rule 5: degree-2 triangle — v undominated, deg=2, neighbors u and w adjacent.
+                // One of {v,u,w} must be in the DS to dominate v; both u and w cover the whole
+                // triangle, so force whichever subsumes the other (N[w]⊆N[u] → force u).
+                if (!dominated[v] && adj[v].Count == 2) {
+                    int u5 = adj[v][0], w5 = adj[v][1];
+                    if (!removed[u5] && !removed[w5]) {
+                        // Mark N[u5]; triangle exists iff w5 ∈ N[u5]
+                        markStamp++;
+                        mark[u5] = markStamp;
+                        foreach (int nb in adj[u5]) mark[nb] = markStamp;
+
+                        if (mark[w5] == markStamp) {
+                            // Triangle confirmed. Check N[w5] ⊆ N[u5]
+                            bool wSubsumedByU = true;
+                            foreach (int nb in adj[w5])
+                                if (mark[nb] != markStamp) { wSubsumedByU = false; break; }
+                            if (wSubsumedByU) { ForceIntoDS(u5); continue; }
+
+                            // Check N[u5] ⊆ N[w5]
+                            markStamp++;
+                            mark[w5] = markStamp;
+                            foreach (int nb in adj[w5]) mark[nb] = markStamp;
+                            bool uSubsumedByW = true;
+                            foreach (int nb in adj[u5])
+                                if (mark[nb] != markStamp) { uSubsumedByW = false; break; }
+                            if (uSubsumedByW) { ForceIntoDS(w5); continue; }
+                        }
+                    }
+                }
+
+
+
             }
         }
 
