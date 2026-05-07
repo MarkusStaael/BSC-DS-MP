@@ -101,6 +101,17 @@ public class CC2FSPerbutation : ISolver {
         }
     }
 
+    public int GetRemovePerbCount() {
+        return 3;//(int)(0.05 * graph.getSize());
+    }
+    public int GetAddPerbCount() {
+        return 3;//(int)(0.05 * graph.getSize());
+    }
+    public double GetPerturbationProbability() {
+        return 0.0001;
+    }
+
+
     protected int Hamming(bool[] a, BitArray b) {
         int count = 0;
         for (int i = 0; i < a.Length; i++)
@@ -212,7 +223,7 @@ public class CC2FSPerbutation : ISolver {
         RemoveVertex(randomVertex);
 
         // Steps 11-13: randomly remove floor(0.05 * |V|) more (in S, not in forbidlist)
-        int perturbCount = 10; //(int)(0.05 * graph.getSize());
+        int perturbCount = GetRemovePerbCount(); //(int)(0.05 * graph.getSize());
         for (int i = 0; i < perturbCount; i++) {
             int heapSize = RemoveHeap.Size();
             if (heapSize == 0) break;
@@ -236,7 +247,7 @@ public class CC2FSPerbutation : ISolver {
         AddVertex(randomVertex);
 
         // Randomly add floor(0.05 * |V|) more (not in S, not in forbidlist)
-        int perturbCount = 10;//(int)(0.05 * graph.getSize());
+        int perturbCount = GetAddPerbCount(); //(int)(0.05 * graph.getSize());
         for (int i = 0; i < perturbCount; i++) {
             int heapSize = AddHeap.Size();
             if (heapSize == 0) break;
@@ -262,7 +273,7 @@ public class CC2FSPerbutation : ISolver {
         } else {
             int v = GetBestRemove(forbidList: true);
             RemoveVertex(v);
-            if (_random.NextDouble() < 0.001) { 
+            if (_random.NextDouble() < GetPerturbationProbability()) { 
                 AddPerturb();
                 Perturb();
             }

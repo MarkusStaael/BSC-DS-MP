@@ -149,8 +149,6 @@ public class CC2FS : ISolver {
             }
         }
 
-
-
         // --- Initialise state ---
         ConfChange = new bool[graph.getSize()];
         for(int i = 0; i < graph.getSize(); i++)
