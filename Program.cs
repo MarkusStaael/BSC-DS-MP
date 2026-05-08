@@ -19,14 +19,14 @@ string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // TESTS
-RunTest(new CC2FSFactory(),"CC2FS 20 min ", new AdjSetLstGraphFactory());
+RunTest(new CC2FSFactory(),"CC2FS 20 min ");
 
 //RunTest(new CC2FSPerturbationFactory(),"P-CC2FS", new AdjSetLstGraphFactory());
 
 
 
 
-void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
+void RunTest(ISolverFactory solverFactory, string id) {
     Console.WriteLine("---Preparing test \"" + id + "\" ---");
 
     MDSReduction reduction = new MDSReduction();
@@ -115,7 +115,7 @@ void RunTest(ISolverFactory solverFactory, string id, IGraphFactory? fac) {
 
 
 void VerifierTest() {
-    IGraph gr = new AdjSetLstGraph(3);
+    IGraph gr = new AdjLstGraph(3);
     gr.AddEdge(0, 1);
     gr.AddEdge(1, 2);
     ISolution sol = new BitArraySolution(3);
