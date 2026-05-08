@@ -10,18 +10,17 @@ using System.Diagnostics;
 bool printResult = false;
 bool toFile = false;
 bool useReduction = true;
-string[] files = { "test.gr", "30z50.gr", "heuristic_001.gr", "bremen_subgraph_300.gr" };
+string[] files = { "test.gr", "30z50.gr", "heuristic_009.gr", "bremen_subgraph_300.gr", };
 int target = 2;
-int timelimit = 1200; // seconds
+int timelimit = 60; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
 string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // TESTS
-RunTest(new CC2FSFactory(),"CC2FS 20 min ");
-
-//RunTest(new CC2FSPerturbationFactory(),"P-CC2FS", new AdjSetLstGraphFactory());
+RunTest(new CC2FSFactory(),"CC2FS");
+RunTest(new PCC2FSFactory(),"P-CC2FS");
 
 
 
