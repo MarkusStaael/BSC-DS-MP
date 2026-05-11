@@ -135,13 +135,13 @@ public class PCC2FS : ISolver {
 
     String PrintName;
 
+    protected Func<int> _removePermCount;
+    protected Func<double> _perturbProbability;
 
-    public int GetRemovePerbCount() {
-        return 10;//(int)(0.001 * graph.getSize());
-    }
-    public double GetPerturbationProbability() {
-        return 0.8; ///0;
-    }
+    public int GetRemovePerbCount() => _removePermCount();
+    public double GetPerturbationProbability() => _perturbProbability();
+
+
     Random _random;
     protected void Perturb() {
         double fp = GetPerturbationProbability();
@@ -192,7 +192,9 @@ public class PCC2FS : ISolver {
         }
     }
 
-    public PCC2FS(AdjLstWithSolGraph graph, String printname, CancellationToken token) {
+    public PCC2FS(AdjLstWithSolGraph graph, String printname, CancellationToken token, Func<int> removePermCount, Func<double> perturbProbability) {
+        _removePermCount = removePermCount;
+        _perturbProbability = perturbProbability;
         int size = graph.getSize();
         this.graph = graph;
 
@@ -573,7 +575,17 @@ public class PCC2FS : ISolver {
 }
 
 public class PCC2FSFactory : ISolverFactory {
+    private readonly Func<AdjLstWithSolGraph, int> _removePermCount;
+    private readonly Func<double> _perturbProbability;
+
+    public PCC2FSFactory(Func<AdjLstWithSolGraph, int> removePermCount, Func<double> perturbProbability) {
+        _removePermCount = removePermCount;
+        _perturbProbability = perturbProbability;
+    }
+
     public ISolver Create(AdjLstWithSolGraph graph, CancellationToken token, string name) {
-        return new PCC2FS(graph, name, token);
+        return new PCC2FS(graph, name, token,
+            removePermCount: () => _removePermCount(graph),
+            perturbProbability: _perturbProbability);
     }
 }

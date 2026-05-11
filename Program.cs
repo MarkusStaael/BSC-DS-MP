@@ -20,7 +20,10 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
 // TESTS
 RunTest(new CC2FSFactory(),"CC2FS");
-RunTest(new PCC2FSFactory(),"P-CC2FS");
+RunTest(new PCC2FSFactory(
+    removePermCount: g => (int)(0.001 * g.getSize()),
+    perturbProbability: () => 0.90
+), "P-CC2FS");
 
 
 
