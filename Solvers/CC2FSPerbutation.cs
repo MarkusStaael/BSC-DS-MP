@@ -37,11 +37,16 @@ public class PCC2FS : ISolver {
     protected uint _stepCount = 0;
     protected int[] _incFreqDelta;    // scratch array for batching IncreaseFreq heap updates
     protected List<int> _incFreqAffected; // vertices touched in current IncreaseFreq call
+    protected IndexedMaxHeap SolNeighRemoveHeap; // keyed by |N(v) ∩ D| * 1000 / deg(v); RemoveMax yields highest-ratio solution-neighbor vertex in D
+    protected BitArray InSolNeighHeap;
+    protected int[] _solNeighCount; // raw |N(v) ∩ D| per vertex
+    protected int[] _degree;         // static degree of each vertex
 
     // Helpers
     protected PlotterHelper plotterHelper;
     protected class PlotterHelper {
         public double[] SelectionCounts;
+        public double[] SolNeighSelectionCounts;
         private String PrintName;
         private List<int> size_plot;
         private List<long> time_plot;
@@ -50,6 +55,7 @@ public class PCC2FS : ISolver {
         private List<long> time_plot_ham;
         public PlotterHelper(int size, String printname) {
             SelectionCounts = new double[size];
+            SolNeighSelectionCounts = new double[size];
             this.PrintName = printname;
             time_plot = new();
             size_plot = new();
@@ -106,6 +112,17 @@ public class PCC2FS : ISolver {
                 var path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_Selection_Frequency.png"));
                 plt.SavePng(path, 2000, 700);
             }
+
+            // SOLNEIGH HEAP SELECTION COUNT BAR PLOT
+            {
+                var plt = new Plot();
+                SolNeighSelectionCounts.Sort();
+                plt.Add.Bars(SolNeighSelectionCounts);
+                plt.Title(PrintName + " - SolNeigh Heap Vertex Selection Frequency");
+                plt.YLabel("Times Selected");
+                var path = Path.GetFullPath(Path.Combine(projroot, "Output", PrintName + "_SolNeigh_Selection_Frequency.png"));
+                plt.SavePng(path, 2000, 700);
+            }
         }
     }
 
@@ -120,59 +137,58 @@ public class PCC2FS : ISolver {
 
 
     public int GetRemovePerbCount() {
-        return 3;//(int)(0.05 * graph.getSize());
-    }
-    public int GetAddPerbCount() {
-        return (int)(0.01 * graph.getSize());
+        return 10;//(int)(0.001 * graph.getSize());
     }
     public double GetPerturbationProbability() {
-        return 0;
+        return 0.8; ///0;
     }
     Random _random;
     protected void Perturb() {
-        // Step 9: randomly select one vertex from RemoveHeap (all entries are in S)
-        int randomVertex = RemoveHeap.GetNodeAt(_random.Next(RemoveHeap.Size()));
-        RemoveHeap.Remove(randomVertex);
-        InRemoveHeap[randomVertex] = false;
-        RemoveVertex(randomVertex);
+        double fp = GetPerturbationProbability();
+        int perturbCount = GetRemovePerbCount();
 
-        // Steps 11-13: randomly remove floor(0.05 * |V|) more (in S, not in forbidlist)
-        int perturbCount = GetRemovePerbCount(); //(int)(0.05 * graph.getSize());
-        for (int i = 0; i < perturbCount; i++) {
-            int heapSize = RemoveHeap.Size();
-            if (heapSize == 0) break;
-            int v = -1;
-            for (int attempt = 0; attempt < heapSize; attempt++) {
-                int candidate = RemoveHeap.GetNodeAt(_random.Next(heapSize));
-                if (!forbidlist.Contains(candidate)) { v = candidate; break; }
+        for (int i = 0; i <= perturbCount; i++) {
+            if (_random.NextDouble() < fp) {
+                // Best Dscore: pick highest-scoring vertex from RemoveHeap
+                if (RemoveHeap.Size() == 0) break;
+                List<int> addAgainList = new List<int>();
+                int v = -1;
+                while (RemoveHeap.Size() > 0) {
+                    int candidate = RemoveHeap.RemoveMax();
+                    if (forbidlist.Contains(candidate)) {
+                        addAgainList.Add(candidate);
+                    } else {
+                        v = candidate;
+                        break;
+                    }
+                }
+                foreach (int u in addAgainList) AddToRemoveHeap(u);
+                if (v == -1) break;
+                InRemoveHeap[v] = false;
+                RemoveVertex(v);
+                forbidlist.Add(v);
+            } else {
+                // Structured: pick highest Mscore from SolNeighRemoveHeap
+                if (SolNeighRemoveHeap.Size() == 0) break;
+                List<int> skipList = new List<int>();
+                int v = -1;
+                while (SolNeighRemoveHeap.Size() > 0) {
+                    int candidate = SolNeighRemoveHeap.RemoveMax();
+                    InSolNeighHeap[candidate] = false;
+                    if (forbidlist.Contains(candidate)) {
+                        skipList.Add(candidate);
+                    } else {
+                        v = candidate;
+                        break;
+                    }
+                }
+                foreach (int u in skipList) AddToSolNeighHeap(u);
+                if (v == -1) break;
+                plotterHelper.SolNeighSelectionCounts[v] += 1;
+                if (InRemoveHeap[v]) { RemoveHeap.Remove(v); InRemoveHeap[v] = false; }
+                RemoveVertex(v);
+                forbidlist.Add(v);
             }
-            if (v == -1) break;
-            RemoveHeap.Remove(v);
-            InRemoveHeap[v] = false;
-            RemoveVertex(v);
-        }
-    }
-    protected void AddPerturb() {
-        // Randomly add one vertex from AddHeap (all entries are not in S)
-        int randomVertex = AddHeap.GetNodeAt(_random.Next(AddHeap.Size()));
-        AddHeap.Remove(randomVertex);
-        InAddHeap[randomVertex] = false;
-        AddVertex(randomVertex);
-
-        // Randomly add floor(0.05 * |V|) more (not in S, not in forbidlist)
-        int perturbCount = GetAddPerbCount(); //(int)(0.05 * graph.getSize());
-        for (int i = 0; i < perturbCount; i++) {
-            int heapSize = AddHeap.Size();
-            if (heapSize == 0) break;
-            int v = -1;
-            for (int attempt = 0; attempt < heapSize; attempt++) {
-                int candidate = AddHeap.GetNodeAt(_random.Next(heapSize));
-                if (!forbidlist.Contains(candidate)) { v = candidate; break; }
-            }
-            if (v == -1) break;
-            AddHeap.Remove(v);
-            InAddHeap[v] = false;
-            AddVertex(v);
         }
     }
 
@@ -188,7 +204,11 @@ public class PCC2FS : ISolver {
             RemoveHeap = new(size);
             InAddHeap = new(size, false);
             InRemoveHeap = new(size, false);
-            // plotterHelper   = new(size, printname);
+            SolNeighRemoveHeap = new(size);
+            InSolNeighHeap = new(size, false);
+            _solNeighCount = new int[size];
+            _degree = new int[size];
+            plotterHelper = new(size, printname);
             ConfChange = new bool[size];
             freq = new uint[size];
             // prof                = new Profiler();
@@ -241,10 +261,15 @@ public class PCC2FS : ISolver {
         _timestamp = new uint[size];
         PrintName = printname;
 
+        // Precompute static degrees
+        for (int i = 0; i < graph.getSize(); i++)
+            foreach (int _ in graph.GetEdges(i)) _degree[i]++;
+
         // Populate heaps from initial solution
         foreach (int v in graph.GetNodes()) {
             if (graph.SolutionContains(v)) {
                 AddToRemoveHeap(v);
+                AddToSolNeighHeap(v);
             } else {
                 AddToAddHeap(v);
             }
@@ -253,7 +278,7 @@ public class PCC2FS : ISolver {
         // START
         SolveLoop(token);
         // prof.Print();
-        // plotterHelper.Print(BestSolution.count);
+        plotterHelper.Print(BestSolution.count);
     }
     public ISolution GetSolution() => BestSolution;
 
@@ -262,13 +287,13 @@ public class PCC2FS : ISolver {
         uint iterCount = 0;
         RetSol prevHam = graph.GetAsRetSol();
         while (!token.IsCancellationRequested) {
-            // if (iterCount % 10 == 0) { // CAN OPTIMIZE?
-            //     if(iterCount % 1000 == 0) {
-            //         plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
-            //         prevHam = graph.GetAsRetSol();
-            //     }
-            //     plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
-            // }
+            if (iterCount % 10 == 0) { // CAN OPTIMIZE?
+                if (iterCount % 1000 == 0) {
+                    plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
+                    prevHam = graph.GetAsRetSol();
+                }
+                plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
+            }
             iterCount++;
             DoLoopLogic();
         }
@@ -284,8 +309,8 @@ public class PCC2FS : ISolver {
         } else {
             //int v = GetBestRemove(forbidList: true);
             //RemoveVertex(v);
-            Perturb();
             forbidlist.Clear();
+            Perturb();
 
             while (!graph.IsSolutionValid()) {
                 int v = GetBestAdd();
@@ -322,11 +347,13 @@ public class PCC2FS : ISolver {
 
     protected virtual int GetBestAdd() {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestAdd++;
+        List<int> skipList = new List<int>();
         while (true) {
             int target = AddHeap.RemoveMax();
             InAddHeap[target] = false;
-            if (graph.SolutionContains(target)) continue;
-            if (!ConfChange[target]) continue;
+            if (graph.SolutionContains(target) || !ConfChange[target]) continue;
+            if (forbidlist.Contains(target)) { skipList.Add(target); continue; }
+            foreach (int u in skipList) AddToAddHeap(u);
             // prof.TicksGetBestAdd += Stopwatch.GetTimestamp() - _t;
             return target;
         }
@@ -335,17 +362,12 @@ public class PCC2FS : ISolver {
     protected virtual int GetBestRemove(bool forbidList) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsGetBestRemove++;
         List<int> addAgainList = new List<int>();
-
         while (true) {
-
             int target = RemoveHeap.RemoveMax();
-
             if (forbidList && forbidlist.Contains(target)) {
                 addAgainList.Add(target);
             } else {
-                foreach (int u in addAgainList) {
-                    AddToRemoveHeap(u);
-                }
+                foreach (int u in addAgainList) AddToRemoveHeap(u);
                 InRemoveHeap[target] = false;
                 // prof.TicksGetBestRemove += Stopwatch.GetTimestamp() - _t;
                 return target;
@@ -365,6 +387,16 @@ public class PCC2FS : ISolver {
         //if (score < 0) Console.WriteLine("Added " + v + " to removeHeap @ " + score);
 
         RemoveHeap.Insert(v, score, _timestamp[v]);
+    }
+
+    protected void AddToSolNeighHeap(int v) {
+        InSolNeighHeap[v] = true;
+        int msc = 0;
+        foreach (int u in graph.GetEdges(v))
+            if (graph.SolutionContains(u)) msc++;
+        _solNeighCount[v] = msc;
+        int deg = _degree[v];
+        SolNeighRemoveHeap.Insert(v, deg > 0 ? msc * 1000 / deg : 0, _timestamp[v]);
     }
 
     protected void UpdateHeapScores(int v) {
@@ -410,9 +442,15 @@ public class PCC2FS : ISolver {
     protected void AddVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
         _timestamp[v] = ++_stepCount;
-        // plotterHelper.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
         graph.AddVertexToSol(v);
 
+        // Update SolNeigh heap for v's neighbors (v just joined D)
+        foreach (int u in graph.GetEdges(v)) {
+            _solNeighCount[u]++;
+            if (InSolNeighHeap[u])
+                SolNeighRemoveHeap.UpdateKey(u, _degree[u] > 0 ? _solNeighCount[u] * 1000 / _degree[u] : 0);
+        }
 
         // --- Neighbors of v ---
         foreach (int u in graph.GetEdges(v)) {
@@ -452,13 +490,16 @@ public class PCC2FS : ISolver {
         // Ensure v is out of AddHeap, then add to RemoveHeap
         if (InAddHeap[v]) { AddHeap.Remove(v); InAddHeap[v] = false; }
         AddToRemoveHeap(v);
+        AddToSolNeighHeap(v);
         // prof.TicksAddVertex += Stopwatch.GetTimestamp() - _t;
     }
 
     protected void RemoveVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
         _timestamp[v] = ++_stepCount;
-        // plotterHelper.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
+        SolNeighRemoveHeap.Remove(v);
+        InSolNeighHeap[v] = false;
         graph.RemoveVertexFromSol(v);
         ConfChange[v] = false;
 
@@ -490,6 +531,13 @@ public class PCC2FS : ISolver {
             foreach (int y in graph.GetEdges(v)) {
                 AdjustRemoveScore(y, -fV);
             }
+        }
+
+        // Update SolNeigh heap for v's neighbors (v just left D)
+        foreach (int u in graph.GetEdges(v)) {
+            _solNeighCount[u]--;
+            if (InSolNeighHeap[u])
+                SolNeighRemoveHeap.UpdateKey(u, _degree[u] > 0 ? _solNeighCount[u] * 1000 / _degree[u] : 0);
         }
 
         foreach (int u in TwoLevelNeighborhood[v])

@@ -143,7 +143,7 @@ public class CC2FS : ISolver {
             RemoveHeap      = new(size);
             InAddHeap          = new(size, false);
             InRemoveHeap    = new(size, false);
-            // plotterHelper   = new(size, printname);
+            plotterHelper   = new(size, printname);
             ConfChange          = new bool[size];
             freq                = new uint[size];
             // prof                = new Profiler();
@@ -208,7 +208,7 @@ public class CC2FS : ISolver {
         // START
         SolveLoop(token);
         // prof.Print();
-        // plotterHelper.Print(BestSolution.count);
+        plotterHelper.Print(BestSolution.count);
     }
     public ISolution GetSolution() => BestSolution;
 
@@ -217,13 +217,13 @@ public class CC2FS : ISolver {
         uint iterCount = 0;
         RetSol prevHam = graph.GetAsRetSol();
         while (!token.IsCancellationRequested) {
-            // if (iterCount % 10 == 0) { // CAN OPTIMIZE?
-            //     if(iterCount % 1000 == 0) {
-            //         plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
-            //         prevHam = graph.GetAsRetSol();
-            //     }
-            //     plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
-            // }
+            if (iterCount % 10 == 0) { // CAN OPTIMIZE?
+                if(iterCount % 1000 == 0) {
+                    plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
+                    prevHam = graph.GetAsRetSol();
+                }
+                plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
+            }
             iterCount++;
             DoLoopLogic();
         }
@@ -364,7 +364,7 @@ public class CC2FS : ISolver {
     protected void AddVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
         _timestamp[v] = ++_stepCount;
-        // plotterHelper.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
         graph.AddVertexToSol(v);
 
 
@@ -412,7 +412,7 @@ public class CC2FS : ISolver {
     protected void RemoveVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
         _timestamp[v] = ++_stepCount;
-        // plotterHelper.SelectionCounts[v] += 1;
+        plotterHelper.SelectionCounts[v] += 1;
         graph.RemoveVertexFromSol(v);
         ConfChange[v] = false;
 
