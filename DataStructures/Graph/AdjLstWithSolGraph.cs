@@ -27,14 +27,32 @@ public class AdjLstWithSolGraph : IGraph {
     public int SolutionCount;
 
     // Coverage tracking
-    public HashSet<int> UncoveredVertices; // Maintained as a set for O(1) add/remove, and to avoid duplicates
+    public List<int> UncoveredVertices;  // swap-and-pop list for O(1) add/remove and cache-friendly iteration
+    private int[] _uncoveredPos;          // _uncoveredPos[v] = index in list, -1 if not present
     public int[] CoveredCount { get; }
     public int TotalDominatedVertices;
-    
+
+    private void UncoveredAdd(int v) {
+        _uncoveredPos[v] = UncoveredVertices.Count;
+        UncoveredVertices.Add(v);
+    }
+
+    private void UncoveredRemove(int v) {
+        int pos = _uncoveredPos[v];
+        if (pos < 0) return;
+        int last = UncoveredVertices[UncoveredVertices.Count - 1];
+        UncoveredVertices[pos] = last;
+        _uncoveredPos[last] = pos;
+        UncoveredVertices.RemoveAt(UncoveredVertices.Count - 1);
+        _uncoveredPos[v] = -1;
+    }
+
     public AdjLstWithSolGraph(int size) {
         this.Size = size;
         SolutionCount = 0;
-        UncoveredVertices = new();
+        UncoveredVertices = new List<int>(size);
+        _uncoveredPos = new int[size];
+        for (int i = 0; i < size; i++) _uncoveredPos[i] = -1;
 
         Edges = new List<int>[size];
         CoveredCount = new int[size];
@@ -44,7 +62,6 @@ public class AdjLstWithSolGraph : IGraph {
             Edges[i] = new();
             CoveredCount[i] = 0;
         }
-            
 
         TotalDominatedVertices = 0;
     }
@@ -92,14 +109,14 @@ public class AdjLstWithSolGraph : IGraph {
         CoveredCount[v] += 1;
         if (CoveredCount[v] == 1) {
             TotalDominatedVertices += 1;
-            UncoveredVertices.Remove(v);
+            UncoveredRemove(v);
         }
 
         foreach (int neighbor in GetEdges(v)) {
             CoveredCount[neighbor] += 1;
             if (CoveredCount[neighbor] == 1) {
                 TotalDominatedVertices += 1;
-                UncoveredVertices.Remove(neighbor);
+                UncoveredRemove(neighbor);
             }
         }
     }
@@ -111,7 +128,7 @@ public class AdjLstWithSolGraph : IGraph {
         if (CoveredCount[v] < 0) throw new Exception("NEGATIVE COVER: vertex " + v + " coveredCount=" + CoveredCount[v]);
         if (CoveredCount[v] == 0) {
             TotalDominatedVertices -= 1;
-            UncoveredVertices.Add(v);
+            UncoveredAdd(v);
         }
 
         foreach (int neighbor in GetEdges(v)) {
@@ -119,7 +136,7 @@ public class AdjLstWithSolGraph : IGraph {
             if (CoveredCount[neighbor] < 0) throw new Exception("NEGATIVE COVER: neighbor " + neighbor + " of " + v + " coveredCount=" + CoveredCount[neighbor]);
             if (CoveredCount[neighbor] == 0) {
                 TotalDominatedVertices -= 1;
-                UncoveredVertices.Add(neighbor);
+                UncoveredAdd(neighbor);
             }
         }
     }

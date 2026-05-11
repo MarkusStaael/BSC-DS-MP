@@ -12,7 +12,7 @@ bool toFile = false;
 bool useReduction = true;
 string[] files = { "test.gr", "30z50.gr", "heuristic_009.gr", "bremen_subgraph_300.gr", };
 int target = 2;
-int timelimit = 60; // seconds
+int timelimit = 300; // seconds
 
 string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
@@ -21,9 +21,17 @@ string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 // TESTS
 RunTest(new CC2FSFactory(),"CC2FS");
 RunTest(new PCC2FSFactory(
-    removePermCount: g => (int)(0.001 * g.getSize()),
-    perturbProbability: () => 0.90
-), "P-CC2FS");
+    removePermCount: g => 10,//(int)(0.0001 * g.getSize()),
+    perturbProbability: () => 0.999
+), "P-CC2FS 10-999");
+//RunTest(new PCC2FSFactory(
+//    removePermCount: g => 10,
+//    perturbProbability: () => 0.95
+//), "P-CC2FS 10-95");
+//RunTest(new PCC2FSFactory(
+//    removePermCount: g => 10,
+//    perturbProbability: () => 0.99
+//), "P-CC2FS 10-99");
 
 
 
