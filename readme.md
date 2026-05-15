@@ -1,0 +1,1 @@
+To run the tests, one must run the command `dotnet run` in a terminal and have all the graphs in the "Data/" folder.
