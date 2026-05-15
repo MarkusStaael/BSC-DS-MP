@@ -8,7 +8,7 @@ public static class Reader {
 
     public static AdjLstWithSolGraph DominatingSetReader(string path) {
 
-        Console.WriteLine("Reading Dominating Set from file: " + path);
+        //Console.WriteLine("Reading Dominating Set from file: " + path);
         AdjLstWithSolGraph graph;
 
         using (StreamReader reader = new StreamReader(path)) {
@@ -17,11 +17,11 @@ public static class Reader {
                 line = reader.ReadLine();
                 string[] strings = line.Split(' ');
                 if (strings[0].Equals("c")) {
-                    Console.WriteLine("Comment: " + line);
+                    //Console.WriteLine("Comment: " + line);
                     continue;
                 }
                 if (strings[0].Equals("p")) {
-                    Console.WriteLine("Problem: " + line);
+                    //Console.WriteLine("Problem: " + line);
                     graph = new AdjLstWithSolGraph(int.Parse(strings[2]));
                     break;
                 }

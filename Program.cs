@@ -10,20 +10,57 @@ using System.Diagnostics;
 bool printResult = false;
 bool toFile = false;
 bool useReduction = true;
-string[] files = { "test.gr", "30z50.gr", "heuristic_009.gr", "bremen_subgraph_300.gr", };
-int target = 2;
-int timelimit = 300; // seconds
+string[] files = { "heuristic_001.gr", "heuristic_003.gr", "heuristic_004.gr", "heuristic_011.gr", "heuristic_013.gr", 
+                    "heuristic_021.gr", "heuristic_030.gr", "heuristic_033.gr", "heuristic_057.gr", "heuristic_058.gr",
+                    "heuristic_063.gr", "heuristic_071.gr", "heuristic_072.gr", "heuristic_074.gr", "heuristic_077.gr",
+                    "heuristic_083.gr", "heuristic_088.gr", "heuristic_093.gr", "heuristic_094.gr", "heuristic_098.gr" };
+int target = 0;
+int timelimit = 900; // seconds
+bool testSuite = true; 
 
-string targetTest = files[target];
 string projroot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..");
-string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
 
-// TESTS
-RunTest(new CC2FSFactory(),"CC2FS");
-RunTest(new PCC2FSFactory(
-    removePermCount: g => 10,//(int)(0.0001 * g.getSize()),
-    perturbProbability: () => 0.999
-), "P-CC2FS 10-999");
+if(testSuite) {
+    foreach (string f in files) {
+    string path = Path.Combine(projroot, "data", f);
+    if (!File.Exists(path)) {
+        Console.WriteLine("File not found: " + path);
+        continue;
+    }
+    try {
+        for (int i = 1; i < 4; i++) {
+        RunTest(new CC2FSFactory(), "CC2FS " + f + " " + i, path);
+        }
+        Console.WriteLine("\n");
+
+        for (int i = 1; i < 4; i++)
+        {
+            RunTest(new PCC2FSFactory(
+            removePermCount: g => 10,//(int)(0.0001 * g.getSize()),
+            perturbProbability: () => 0.999
+        ), "P-CC2FS 10-999 " + f + " " + i.ToString(), 
+        path);
+        }
+        Console.WriteLine("\n");
+    } catch (Exception ex) {
+        Console.WriteLine("Error during test \"" + f + "\": " + ex.Message);
+        }
+    }
+}else {
+    string targetTest = files[target];
+    string path = Path.GetFullPath(Path.Combine(projroot, "data", targetTest));
+
+    // TESTS
+    RunTest(new CC2FSFactory(),"CC2FS", path);
+    RunTest(new PCC2FSFactory(
+        removePermCount: g => 10,//(int)(0.0001 * g.getSize()),
+        perturbProbability: () => 0.999
+    ), "P-CC2FS 10-999", 
+    path);
+}
+
+
+
 //RunTest(new PCC2FSFactory(
 //    removePermCount: g => 10,
 //    perturbProbability: () => 0.95
@@ -36,7 +73,7 @@ RunTest(new PCC2FSFactory(
 
 
 
-void RunTest(ISolverFactory solverFactory, string id) {
+void RunTest(ISolverFactory solverFactory, string id, string path) {
     Console.WriteLine("---Preparing test \"" + id + "\" ---");
 
     MDSReduction reduction = new MDSReduction();

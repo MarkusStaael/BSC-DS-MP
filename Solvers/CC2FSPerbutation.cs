@@ -194,7 +194,7 @@ public class PCC2FS : ISolver {
                 foreach (int u in _reuseSkipList) AddToSolNeighHeap(u);
                 _reuseSkipList.Clear();
                 if (v == -1) break;
-                plotterHelper.SolNeighSelectionCounts[v] += 1;
+                //plotterHelper.SolNeighSelectionCounts[v] += 1;
                 if (InRemoveHeap[v]) { RemoveHeap.Remove(v); InRemoveHeap[v] = false; }
                 RemoveVertex(v);
                 forbidlist.Add(v);
@@ -299,23 +299,23 @@ public class PCC2FS : ISolver {
         // START
         SolveLoop(token);
         // prof.Print();
-        plotterHelper.Print(BestSolution.count);
+        //plotterHelper.Print(BestSolution.count);
     }
     public ISolution GetSolution() => BestSolution;
 
     protected void SolveLoop(CancellationToken token) {
-        var sw = Stopwatch.StartNew();
-        uint iterCount = 0;
-        RetSol prevHam = graph.GetAsRetSol();
+        //var sw = Stopwatch.StartNew();
+        //uint iterCount = 0;
+        //RetSol prevHam = graph.GetAsRetSol();
         while (!token.IsCancellationRequested) {
-            if (iterCount % 10 == 0) { // CAN OPTIMIZE?
+            /*if (iterCount % 10 == 0) { // CAN OPTIMIZE?
                 if (iterCount % 1000 == 0) {
                     plotterHelper.AddHamDatapoint(Hamming(graph.VerticesInS, prevHam.Solution), sw.ElapsedMilliseconds);
                     prevHam = graph.GetAsRetSol();
                 }
                 plotterHelper.AddSOTDatapoint(graph.GetSolutionCount(), sw.ElapsedMilliseconds);
             }
-            iterCount++;
+            iterCount++;*/
             DoLoopLogic();
         }
     }
@@ -484,7 +484,7 @@ public class PCC2FS : ISolver {
     protected void AddVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsAddVertex++;
         _timestamp[v] = ++_stepCount;
-        plotterHelper.SelectionCounts[v] += 1;
+        //plotterHelper.SelectionCounts[v] += 1;
         graph.AddVertexToSol(v);
 
         // Single pass over N(v): update SolNeigh heap + accumulate score deltas
@@ -539,7 +539,7 @@ public class PCC2FS : ISolver {
     protected void RemoveVertex(int v) {
         // long _t = Stopwatch.GetTimestamp(); prof.CallsRemoveVertex++;
         _timestamp[v] = ++_stepCount;
-        plotterHelper.SelectionCounts[v] += 1;
+        //plotterHelper.SelectionCounts[v] += 1;
         SolNeighRemoveHeap.Remove(v);
         InSolNeighHeap[v] = false;
         graph.RemoveVertexFromSol(v);

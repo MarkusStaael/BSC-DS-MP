@@ -48,10 +48,10 @@ public class GreedyDecreaseKey {
 
             foreach (int c in newlyCovered) {
                 score[c]--;
-                heap.DecreaseKey(c, score[c]);
+                heap.UpdateKey(c, score[c]);
                 foreach (int nbr in graph.GetEdges(c)) {
                     score[nbr]--;
-                    heap.DecreaseKey(nbr, score[nbr]);
+                    heap.UpdateKey(nbr, score[nbr]);
                 }
             }
         }
